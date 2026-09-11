@@ -1,0 +1,16 @@
+{
+  "name": "decision-sim",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Decision Simulation & Scenario Intelligence Platform — Phase 1: core domain logic",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^2.1.9",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  }
+}
