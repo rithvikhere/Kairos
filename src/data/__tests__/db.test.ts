@@ -1,14 +1,18 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runMonteCarloSimulation } from "../../domain/monteCarlo.js";
 import { simulate } from "../../domain/simulation.js";
 import type { UncertainScenarioInputs } from "../../domain/monteCarlo.js";
 import {
+  PG_RETRY_COOLDOWN_MS,
+  _pgConnector,
   _resetInMemoryDb,
+  _resetPgConnectionState,
   createProject,
   deleteProject,
   deleteScenario,
   ensureSchema,
   getChildren,
+  getPgPool,
   getProject,
   getScenario,
   listProjects,
@@ -362,6 +366,97 @@ describe("Phase 3 Data Layer (db.ts in-memory mode)", () => {
     it.each(searchCases)("searches correctly for %s", async (_description, opts, expectedCount) => {
       const results = await searchScenarios(projectId, opts);
       expect(results).toHaveLength(expectedCount);
+    });
+  });
+
+  describe("getPgPool retry behavior", () => {
+    beforeEach(() => {
+      vi.useRealTimers();
+      _resetPgConnectionState();
+      delete (globalThis as any).process?.env?.DATABASE_URL;
+      vi.restoreAllMocks();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      _resetPgConnectionState();
+      delete (globalThis as any).process?.env?.DATABASE_URL;
+      vi.restoreAllMocks();
+    });
+
+    it("without DATABASE_URL set, getPgPool() always returns null and never throws", async () => {
+      delete (globalThis as any).process?.env?.DATABASE_URL;
+      const pool1 = await getPgPool();
+      expect(pool1).toBeNull();
+      const pool2 = await getPgPool();
+      expect(pool2).toBeNull();
+    });
+
+    it("two calls to getPgPool() within the cooldown window after a failed attempt do not trigger two separate connection attempts", async () => {
+      vi.useFakeTimers();
+      (globalThis as any).process = (globalThis as any).process ?? {};
+      (globalThis as any).process.env = (globalThis as any).process.env ?? {};
+      (globalThis as any).process.env.DATABASE_URL = "postgres://localhost:5432/test";
+
+      const spy = vi
+        .spyOn(_pgConnector, "connect")
+        .mockRejectedValue(new Error("Connection failed"));
+
+      // First call: attempts connection and fails
+      const res1 = await getPgPool();
+      expect(res1).toBeNull();
+      expect(spy).toHaveBeenCalledTimes(1);
+
+      // Advance by 10 seconds (well within PG_RETRY_COOLDOWN_MS of 30 seconds)
+      vi.advanceTimersByTime(10_000);
+
+      // Second call: within cooldown window, should immediately return null without new attempt
+      const res2 = await getPgPool();
+      expect(res2).toBeNull();
+      expect(spy).toHaveBeenCalledTimes(1);
+    });
+
+    it("after advancing time past PG_RETRY_COOLDOWN_MS, a subsequent call attempts to connect again", async () => {
+      vi.useFakeTimers();
+      (globalThis as any).process = (globalThis as any).process ?? {};
+      (globalThis as any).process.env = (globalThis as any).process.env ?? {};
+      (globalThis as any).process.env.DATABASE_URL = "postgres://localhost:5432/test";
+
+      const spy = vi
+        .spyOn(_pgConnector, "connect")
+        .mockRejectedValue(new Error("Connection failed"));
+
+      // First call: attempts connection and fails
+      const res1 = await getPgPool();
+      expect(res1).toBeNull();
+      expect(spy).toHaveBeenCalledTimes(1);
+
+      // Advance time past the 30s cooldown
+      vi.advanceTimersByTime(PG_RETRY_COOLDOWN_MS + 1);
+
+      // Second call: cooldown expired, triggers a new connection attempt
+      const res2 = await getPgPool();
+      expect(res2).toBeNull();
+      expect(spy).toHaveBeenCalledTimes(2);
+
+      // Third call within new cooldown window: does NOT trigger a connection attempt
+      const res3 = await getPgPool();
+      expect(res3).toBeNull();
+      expect(spy).toHaveBeenCalledTimes(2);
+
+      // Advance time past cooldown again, succeed this time
+      vi.advanceTimersByTime(PG_RETRY_COOLDOWN_MS + 1);
+      const mockPool = { query: vi.fn() };
+      spy.mockResolvedValueOnce(mockPool);
+
+      const res4 = await getPgPool();
+      expect(res4).toBe(mockPool);
+      expect(spy).toHaveBeenCalledTimes(3);
+
+      // Subsequent call when pool is cached: returns cached pool immediately without calling connect
+      const res5 = await getPgPool();
+      expect(res5).toBe(mockPool);
+      expect(spy).toHaveBeenCalledTimes(3);
     });
   });
 });

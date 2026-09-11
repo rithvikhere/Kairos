@@ -68,19 +68,63 @@ function extractBaseline(value: number | Distribution): number {
   }
 }
 
+/** Cooldown duration (30 seconds) before retrying a failed Postgres connection. */
+export const PG_RETRY_COOLDOWN_MS = 30_000;
+
 // ---------------------------------------------------------------------------
 // Postgres Connection & Initialization
 // ---------------------------------------------------------------------------
 
 let pgPool: any = null;
-let pgAttempted = false;
+let lastConnectionAttempt = 0;
+
+/**
+ * Resets the Postgres connection state (pool and last attempt timestamp).
+ * Test-only helper to simulate a fresh process state.
+ */
+export function _resetPgConnectionState(): void {
+  pgPool = null;
+  lastConnectionAttempt = 0;
+}
+
+/**
+ * Connector object providing the actual Postgres connection attempt.
+ * Isolated to enable mocking and spying in tests without requiring real Postgres.
+ */
+export const _pgConnector = {
+  connect: async (dbUrl: string): Promise<any> => {
+    const pgModule = "pg";
+    const pg: any = await import(/* @vite-ignore */ pgModule);
+    const Pool = (pg.default && pg.default.Pool) || pg.Pool;
+    const candidatePool = new Pool({ connectionString: dbUrl });
+    const client = await candidatePool.connect();
+    client.release();
+    return candidatePool;
+  },
+};
 
 /**
  * Resolves a live PostgreSQL pool if available, otherwise returns null.
+ *
+ * Employs a retry-with-cooldown strategy:
+ * - If pgPool is already set (previous successful connection), returns it immediately.
+ * - If pgPool is null, checks how long it has been since lastConnectionAttempt.
+ *   If less than PG_RETRY_COOLDOWN_MS has elapsed, returns null immediately without attempting.
+ * - Otherwise updates lastConnectionAttempt = Date.now(), attempts connection, and:
+ *   - On success: stores pool in pgPool and returns it.
+ *   - On failure: leaves pgPool as null and returns null. The next call after the cooldown will retry.
  */
-async function getPgPool(): Promise<any> {
-  if (pgAttempted) return pgPool;
-  pgAttempted = true;
+export async function getPgPool(): Promise<any> {
+  if (pgPool !== null) {
+    return pgPool;
+  }
+
+  const now = Date.now();
+  if (now - lastConnectionAttempt < PG_RETRY_COOLDOWN_MS) {
+    return null;
+  }
+
+  lastConnectionAttempt = now;
 
   const dbUrl = (globalThis as any).process?.env?.DATABASE_URL;
   if (!dbUrl) {
@@ -88,12 +132,7 @@ async function getPgPool(): Promise<any> {
   }
 
   try {
-    const pgModule = "pg";
-    const pg: any = await import(/* @vite-ignore */ pgModule);
-    const Pool = (pg.default && pg.default.Pool) || pg.Pool;
-    const candidatePool = new Pool({ connectionString: dbUrl });
-    const client = await candidatePool.connect();
-    client.release();
+    const candidatePool = await _pgConnector.connect(dbUrl);
     pgPool = candidatePool;
     return pgPool;
   } catch {
