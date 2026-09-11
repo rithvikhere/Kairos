@@ -27,6 +27,19 @@ Located in `src/domain/` (`monteCarlo.ts`):
   - Percentiles (`p10`, `p25`, `p50`, `p75`, `p90`)
   - Contiguous 10-bin frequency `histogram`
   - `feasibleRate` (fraction of valid runs where scenario is feasible)
+  - `probabilityOnTime` and `probabilityWithinBudget` boundary metrics
+
+### Phase 3 — Data & Persistence Layer
+Located in `src/data/` (`schema.ts`, `setup.sql`, `db.ts`):
+- **Relational Schema**: Manages `projects` and `scenarios` tables with exact relational constraints and 6 specialized indexes (`idx_scenarios_project`, `idx_scenarios_parent`, `idx_scenarios_created_at`, `idx_scenarios_favorite`, `idx_scenarios_tags`, `idx_scenarios_active`).
+- **Domain JSONB Integrity**: Row records (`ProjectRecord`, `ScenarioRecord`) reference the real domain types (`UncertainScenarioInputs`, `SimulationResult`, `MonteCarloResult`) without `any` or loose dictionaries.
+- **Dual-Mode Architecture**: Transparently queries a live Postgres pool when `DATABASE_URL` is set, falling back seamlessly to module-level in-memory maps (`inMemoryProjects`, `inMemoryScenarios`) for offline development and testing.
+- **Business Guardrails**:
+  - Project deletion is strictly blocked (`ProjectNotEmptyError`) when scenarios reference it. No cascading deletes.
+  - Parent deletion nullifies children's `parent_scenario_id` without deleting them.
+  - Curated project tag suggestions remain independent from free-form scenario tags.
+  - Distinct soft delete (`setArchived`) vs. hard delete (`deleteScenario`).
+  - Search provides case-insensitive substring matching on name/description and strict AND matching across all queried tags.
 
 ---
 
@@ -35,15 +48,21 @@ Located in `src/domain/` (`monteCarlo.ts`):
 ```
 decision-sim/
 ├── src/
-│   └── domain/
-│       ├── constants.ts              # Calibration numbers & weights
-│       ├── types.ts                  # Core domain types (ScenarioInputs, SimulationResult)
-│       ├── simulation.ts             # Deterministic simulation engine (simulate())
-│       ├── monteCarlo.ts             # Probabilistic Monte Carlo engine & runner
-│       ├── index.ts                  # Public barrel export
+│   ├── domain/
+│   │   ├── constants.ts              # Calibration numbers & weights
+│   │   ├── types.ts                  # Core domain types (ScenarioInputs, SimulationResult)
+│   │   ├── simulation.ts             # Deterministic simulation engine (simulate())
+│   │   ├── monteCarlo.ts             # Probabilistic Monte Carlo engine & runner
+│   │   ├── index.ts                  # Public domain barrel export
+│   │   └── __tests__/
+│   │       ├── simulation.test.ts    # Phase 1 unit tests (35 tests)
+│   │       └── monteCarlo.test.ts    # Phase 2 Monte Carlo tests (37 tests)
+│   └── data/
+│       ├── schema.ts                 # Database entity records & error classes
+│       ├── setup.sql                 # DDL migration script with all 6 indexes
+│       ├── db.ts                     # Dual-mode (Postgres + in-memory fallback) database engine
 │       └── __tests__/
-│           ├── simulation.test.ts    # Phase 1 unit tests (35 tests)
-│           └── monteCarlo.test.ts    # Phase 2 Monte Carlo tests (33 tests)
+│           └── db.test.ts            # Phase 3 persistence unit tests (21 tests)
 ├── package.json
 ├── tsconfig.json
 └── vitest.config.ts
