@@ -102,7 +102,8 @@ export interface DistributionSummary {
 export type MetricDistributionSummary = DistributionSummary;
 
 /**
- * Comprehensive results from a Monte Carlo simulation execution.
+ * Comprehensive results from a Monte Carlo simulation execution, including metric
+ * distributions, feasibility rate, and on-time / within-budget probabilities.
  */
 export interface MonteCarloResult {
   /** Total iterations requested by the caller. */
@@ -117,6 +118,10 @@ export interface MonteCarloResult {
   feasibleRate: number;
   /** Alias for feasibleRate. */
   feasibilityRate: number;
+  /** Fraction of valid runs where scheduleUtilization <= 1 (i.e., estimatedTimeWeeks did not exceed deadlineWeeks) (0.0 to 1.0). */
+  probabilityOnTime: number;
+  /** Fraction of valid runs where budgetUtilization <= 1 (i.e., actualCost did not exceed budget) (0.0 to 1.0). */
+  probabilityWithinBudget: number;
 
   /** Distribution of estimated calendar time in weeks. */
   estimatedTimeWeeks: DistributionSummary;
@@ -399,7 +404,7 @@ export function summarizeDistribution(
  *
  * @param inputs - Uncertain scenario inputs containing numbers or distribution specs.
  * @param options - Simulation options (iterations count, random seed, histogram bucket count).
- * @returns Aggregated distribution summaries for all simulation outputs and feasibility rate.
+ * @returns Aggregated distribution summaries for all simulation outputs, feasibility rate, and on-time / within-budget probabilities.
  */
 export function runMonteCarloSimulation(
   inputs: UncertainScenarioInputs,
@@ -430,6 +435,13 @@ export function runMonteCarloSimulation(
   const feasibleCount = validResults.filter((r) => r.feasible).length;
   const feasibleRate = iterationsActuallyUsed > 0 ? feasibleCount / iterationsActuallyUsed : 0;
 
+  const onTimeCount = validResults.filter((r) => r.scheduleUtilization <= 1).length;
+  const probabilityOnTime = iterationsActuallyUsed > 0 ? onTimeCount / iterationsActuallyUsed : 0;
+
+  const withinBudgetCount = validResults.filter((r) => r.budgetUtilization <= 1).length;
+  const probabilityWithinBudget =
+    iterationsActuallyUsed > 0 ? withinBudgetCount / iterationsActuallyUsed : 0;
+
   const estimatedTimeWeeksValues = validResults.map((r) => r.estimatedTimeWeeks);
   const effectiveHeadcountValues = validResults.map((r) => r.effectiveHeadcount);
   const actualCostValues = validResults.map((r) => r.actualCost);
@@ -444,6 +456,8 @@ export function runMonteCarloSimulation(
     skippedIterations,
     feasibleRate,
     feasibilityRate: feasibleRate,
+    probabilityOnTime,
+    probabilityWithinBudget,
     estimatedTimeWeeks: summarizeDistribution(estimatedTimeWeeksValues, bucketCount),
     effectiveHeadcount: summarizeDistribution(effectiveHeadcountValues, bucketCount),
     actualCost: summarizeDistribution(actualCostValues, bucketCount),

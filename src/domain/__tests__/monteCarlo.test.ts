@@ -411,6 +411,58 @@ describe("runMonteCarloSimulation — Core Statistical Properties", () => {
     });
   });
 
+  describe("on-time and within-budget probability behavior", () => {
+    const safelyResourced: UncertainScenarioInputs = {
+      budget: { kind: "uniform", min: 3_000_000, max: 4_000_000 },
+      headcount: 10,
+      deadlineWeeks: { kind: "uniform", min: 70, max: 90 },
+      scope: 480,
+    };
+
+    const underResourced: UncertainScenarioInputs = {
+      budget: { kind: "uniform", min: 10_000, max: 20_000 },
+      headcount: 1,
+      deadlineWeeks: 2,
+      scope: 480,
+    };
+
+    it("confirms probabilityOnTime is 1.0 for a comfortably-resourced scenario", () => {
+      const result = runMonteCarloSimulation(safelyResourced, { iterations: 200, seed: 42 });
+      expect(result.probabilityOnTime).toBe(1.0);
+    });
+
+    it("confirms probabilityOnTime is 0.0 for a severely under-resourced scenario", () => {
+      const result = runMonteCarloSimulation(underResourced, { iterations: 200, seed: 42 });
+      expect(result.probabilityOnTime).toBe(0.0);
+    });
+
+    it("confirms probabilityWithinBudget behaves the same way", () => {
+      const safeResult = runMonteCarloSimulation(safelyResourced, { iterations: 200, seed: 42 });
+      expect(safeResult.probabilityWithinBudget).toBe(1.0);
+
+      const underResult = runMonteCarloSimulation(underResourced, { iterations: 200, seed: 42 });
+      expect(underResult.probabilityWithinBudget).toBe(0.0);
+    });
+
+    it("confirms probabilityOnTime and probabilityWithinBudget can diverge from each other and from feasibleRate when schedule is fine but budget is tight", () => {
+      const tightBudgetScenario: UncertainScenarioInputs = {
+        budget: 1_000_000,
+        headcount: 10,
+        deadlineWeeks: 100,
+        scope: 480,
+      };
+
+      const result = runMonteCarloSimulation(tightBudgetScenario, { iterations: 200, seed: 42 });
+
+      expect(result.probabilityOnTime).toBe(1.0);
+      expect(result.probabilityWithinBudget).toBe(0.0);
+      expect(result.feasibleRate).toBe(1.0);
+
+      expect(result.probabilityOnTime).not.toBe(result.probabilityWithinBudget);
+      expect(result.probabilityWithinBudget).not.toBe(result.feasibleRate);
+    });
+  });
+
   describe("performance check", () => {
     it("completes 5000 iterations in well under a second (< 1000ms)", () => {
       const start = Date.now();
