@@ -15,6 +15,15 @@ const config: Config = {
         "risk-mod": "#f2e6c8", // honey
         "risk-high": "#eccb9c",// amber-copper
         "risk-crit": "#d99a8a",// deep brick
+
+        // Landing Identity Palette
+        "landing-base": "#f6f4ef",       // warm bone/off-white — never pure white
+        "landing-ink": "#221f1b",        // near-black warm charcoal — never pure black
+        "landing-accent": "#2c4356",     // deep slate-navy
+        "landing-accent-hover": "#1d2e3b", // deep state hover
+        "signal-sage": "#8ba888",        // low risk / feasible signal
+        "signal-amber": "#c98a3e",       // moderate risk signal
+        "signal-terracotta": "#b5502f",   // high / critical risk signal
       },
       fontFamily: {
         serif: ["var(--font-fraunces)", "Georgia", "serif"],

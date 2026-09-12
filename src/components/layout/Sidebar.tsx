@@ -40,7 +40,7 @@ export const Sidebar: React.FC = () => {
           <Sparkles className="w-4 h-4 text-base" />
         </div>
         {!sidebarCollapsed && (
-          <Link href="/" className="flex flex-col">
+          <Link href="/projects" className="flex flex-col">
             <span className="font-serif font-bold text-lg text-ink tracking-tight">
               Kairos
             </span>

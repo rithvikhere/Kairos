@@ -35,9 +35,22 @@ test.describe("Phase 7 E2E: Full Happy-Path Scenario Lifecycle", () => {
       });
     });
 
-    // 2. Project List: Load '/' and create a new project
+    // 2. Landing Page: Verify landing experience and navigate to workspace
     await page.goto("/");
     await expect(page).toHaveTitle(/Kairos/i);
+    await expect(page.getByText("Every decision")).toBeVisible();
+    await expect(page.getByText("has a shape.")).toBeVisible();
+
+    // Hotspot interaction verification
+    const sliderHotspot = page.getByTestId("hotspot-slider");
+    await expect(sliderHotspot).toBeVisible();
+    await sliderHotspot.click();
+    await expect(page.getByText("Deterministic Core")).toBeVisible();
+    await page.getByLabel("Close modal").click();
+
+    // Hard navigation to workspace via hero CTA
+    await page.getByTestId("hero-enter-btn").click();
+    await expect(page).toHaveURL("/projects");
 
     // Open Create Project modal
     await page.getByRole("button", { name: /new project/i }).click();
