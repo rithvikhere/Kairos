@@ -173,11 +173,47 @@ decision-sim/
 
 ---
 
+## Environment Configuration
+
+| Variable | Description | Default |
+|---|---|---|
+| `DATABASE_URL` | PostgreSQL connection string | (none — uses in-memory map engine) |
+| `OPENAI_API_KEY` | OpenAI API authentication key | (none) |
+| `ANTHROPIC_API_KEY` | Anthropic API authentication key | (none) |
+| `AI_PROVIDER_INTENT_PARSING` | Primary provider for scenario intent extraction | `openai` |
+| `AI_MODEL_INTENT_PARSING` | Primary model for scenario intent extraction | `gpt-4o` |
+| `AI_PROVIDER_DIFF_EXPLANATION` | Primary provider for bounded diff explanation | `openai` |
+| `AI_MODEL_DIFF_EXPLANATION` | Primary model for bounded diff explanation | `gpt-4o-mini` |
+| `AI_FALLBACK_MODEL_INTENT_PARSING` | Secondary fallback model for intent parsing | `claude-3-5-sonnet-latest` |
+| `AI_FALLBACK_MODEL_DIFF_EXPLANATION` | Secondary fallback model for diff explanation | `claude-3-5-haiku-latest` |
+
+---
+
 ## Running the Test Suite
 
 ```bash
 npm test
 ```
+
+### Test Suite Breakdown (193 Tests across 14 Suites)
+
+| Test File | Phase | Tests | Focus Area |
+|---|---|---|---|
+| `src/domain/__tests__/simulation.test.ts` | Phase 1 | 35 | Pure simulation, Brooks's law, risk breakdown, validation |
+| `src/domain/__tests__/monteCarlo.test.ts` | Phase 2 | 37 | PRNG, Box-Muller, distributions, percentiles, histograms |
+| `src/data/__tests__/db.test.ts` | Phase 3 | 24 | In-memory & Postgres CRUD, constraints, search, archiving |
+| `src/domain/__tests__/diff.test.ts` | Phase 4 | 14 | Pairwise deltas, isolated risk attribution, non-additivity |
+| `src/app/api/__tests__/projects.test.ts` | Phase 5 | 12 | Project creation, lookup, tag patching, cascade protection |
+| `src/app/api/__tests__/scenarios.test.ts` | Phase 5 | 22 | Scenario CRUD, branching, favorites, search, pagination |
+| `src/app/api/__tests__/simulate.test.ts` | Phase 5 | 4 | Stateless deterministic & Monte Carlo simulation routes |
+| `src/app/api/__tests__/diff.test.ts` | Phase 5 | 3 | Scenario diff endpoint with 400 & 404 validation |
+| `src/ai/__tests__/applyIntentDelta.test.ts` | Phase 6 | 17 | Pure delta arithmetic (absolute, percent, delta, multi-field) |
+| `src/ai/__tests__/client.test.ts` | Phase 6 | 6 | Multi-provider fallback chain, connector invocation, error handling |
+| `src/ai/__tests__/explainDiff.test.ts` | Phase 6 | 5 | Diff prompt generation, AI success, deterministic template fallback |
+| `src/ai/__tests__/parseScenarioIntent.test.ts` | Phase 6 | 6 | Multi-field structured JSON extraction, error handling, unconfigured AI |
+| `src/app/api/ai/__tests__/parse-intent.test.ts` | Phase 6 | 4 | POST /api/ai/parse-intent endpoint (200, 400, 503 AI_UNAVAILABLE) |
+| `src/app/api/ai/__tests__/explain-diff.test.ts` | Phase 6 | 4 | POST /api/ai/explain-diff endpoint (200 AI, 200 template, 404) |
+| **Total** | **Phases 1–6** | **193** | **All suites passing with zero errors** |
 
 Run test suite with coverage:
 ```bash
@@ -188,3 +224,4 @@ Type check:
 ```bash
 npx tsc --noEmit
 ```
+
