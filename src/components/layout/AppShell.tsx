@@ -19,9 +19,9 @@ export interface AppShellProps {
  */
 export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   const pathname = usePathname();
-  const isLandingPage = pathname === "/";
+  const isStandalone = pathname === "/" || pathname === "/projects";
 
-  if (isLandingPage) {
+  if (isStandalone) {
     return (
       <main className="min-h-screen w-full bg-[#f6f4ef] text-[#221f1b]">
         {children}
