@@ -5,7 +5,8 @@ export type ErrorCode =
   | "CONFIRMATION_REQUIRED"
   | "NOT_FOUND"
   | "PROJECT_NOT_EMPTY"
-  | "INTERNAL_ERROR";
+  | "INTERNAL_ERROR"
+  | "AI_UNAVAILABLE";
 
 export interface ApiResponseSuccess<T> {
   data: T;

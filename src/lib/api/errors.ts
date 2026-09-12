@@ -1,6 +1,7 @@
 import { ZodError } from "zod";
 import { ProjectNotEmptyError } from "../../data/schema.js";
 import { InvalidScenarioError } from "../../domain/simulation.js";
+import { AiUnavailableError } from "../../ai/errors.js";
 import { type ErrorCode, fail } from "./respond.js";
 
 /**
@@ -38,6 +39,10 @@ export function handleRouteError(err: unknown) {
 
   if (err instanceof InvalidScenarioError) {
     return fail(400, "VALIDATION_ERROR", err.message);
+  }
+
+  if (err instanceof AiUnavailableError) {
+    return fail(503, "AI_UNAVAILABLE", err.message);
   }
 
   // Unexpected errors: log to server console, do not leak stack traces

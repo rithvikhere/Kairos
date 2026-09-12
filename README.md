@@ -72,6 +72,18 @@ Located in `src/app/api/` and `src/lib/api/`:
 - **Input Validation via Zod**: Comprehensive request schemas in `src/lib/api/schemas.ts` with discriminated unions for probability distributions (`fixed`, `normal`, `uniform`).
 - **Strict Error Guardrails**: Centralized error translation in `src/lib/api/errors.ts` mapping validation errors (400), confirmation requirements (400), not found errors (404), non-empty project deletions (409), and internal server errors (500 without leaking stack traces).
 
+### Phase 6 — AI Layer
+Located in `src/ai/` and `src/app/api/ai/`:
+- **Strict Separation of AI from Calculation Truth**: The AI never calculates or invents simulation numbers — it only extracts user intent from free text or explains pre-computed diff metrics:
+  1. **Natural-Language Scenario Intent Parsing (`parseScenarioIntent`)**: Translates free-form conversational text (e.g., "cut budget 20%, add 2 people, push deadline back 4 weeks") into a structured `ScenarioIntentDelta` via OpenAI/Anthropic Structured Outputs with JSON schema enforcement. Multi-field extraction is the primary design.
+  2. **Pure Intent Application (`applyIntentDelta`)**: A zero-AI, zero-I/O pure function applying `absolute`, `percent`, or unit `delta` modifications to baseline inputs to produce concrete `ScenarioInputs`. Does not validate business rules (e.g. non-positive values), deferring to `simulate()` downstream.
+  3. **Bounded Diff Explanation (`explainScenarioDiff`)**: Translates pre-computed `ScenarioDiff` objects into plain-English summaries. Built entirely from diff fields, citing every attribution row in exact sort order and enforcing the verbatim disclaimer: *"These per-field contributions do NOT sum to the total risk change — do not claim they do, and do not imply the risk change can be fully decomposed into independent causes"*.
+  4. **Deterministic Template Fallback**: Diff explanation never fails if AI is unconfigured or unreachable — it returns a byte-identical templated string with `source: "template-fallback"`.
+- **Multi-Provider Fallback Chain (`_aiConnectorComplete`)**: Automatically attempts primary provider (`gpt-4o` for intent parsing, `gpt-4o-mini` for diff explanation) and fails over to secondary provider (`claude-3-5-sonnet-latest` / `claude-3-5-haiku-latest`). Throws `AiUnavailableError` only after all configured providers in the chain fail.
+- **Dedicated AI API Endpoints**:
+  - `POST /api/ai/parse-intent`: Returns `{ delta, resolvedInputs }`. Returns 503 `AI_UNAVAILABLE` when AI is unconfigured, directing users to structured sliders/forms. Never returns a `SimulationResult`.
+  - `POST /api/ai/explain-diff`: Resolves scenarios by ID via `diffScenariosById` and returns `DiffExplanation`. Always returns 200 OK (with `source: "ai" | "template-fallback"`). Returns 404 `NOT_FOUND` if a scenario cannot be found.
+
 ---
 
 ## Directory Structure
@@ -79,8 +91,30 @@ Located in `src/app/api/` and `src/lib/api/`:
 ```
 decision-sim/
 ├── src/
+│   ├── ai/
+│   │   ├── types.ts                  # DeltaSpec, ScenarioIntentDelta, ParsedIntentResult, DiffExplanation
+│   │   ├── modelConfig.ts            # ModelSpec & MODEL_CONFIG per task
+│   │   ├── client.ts                 # Fallback chain _aiConnectorComplete, _providerConnectors, isAiConfigured
+│   │   ├── errors.ts                 # AiUnavailableError class
+│   │   ├── prompts.ts                # System prompts, JSON schema, and user prompt builders
+│   │   ├── applyIntentDelta.ts       # Pure arithmetic delta resolver (zero AI)
+│   │   ├── parseScenarioIntent.ts    # Intent parsing via structured JSON schema
+│   │   ├── explainDiff.ts            # Bounded diff explanation with deterministic template fallback
+│   │   └── __tests__/
+│   │       ├── applyIntentDelta.test.ts    # Unit tests for delta arithmetic (17 tests)
+│   │       ├── parseScenarioIntent.test.ts # Structured extraction tests (6 tests)
+│   │       ├── explainDiff.test.ts         # Diff explanation & template fallback tests (5 tests)
+│   │       └── client.test.ts              # Multi-provider fallback tests (6 tests)
 │   ├── app/
 │   │   └── api/
+│   │       ├── ai/
+│   │       │   ├── parse-intent/
+│   │       │   │   └── route.ts      # POST /api/ai/parse-intent
+│   │       │   ├── explain-diff/
+│   │       │   │   └── route.ts      # POST /api/ai/explain-diff
+│   │       │   └── __tests__/
+│   │       │       ├── parse-intent.test.ts # Route tests for parse-intent (4 tests)
+│   │       │       └── explain-diff.test.ts # Route tests for explain-diff (4 tests)
 │   │       ├── projects/
 │   │       │   ├── route.ts          # POST (create), GET (list)
 │   │       │   └── [id]/
