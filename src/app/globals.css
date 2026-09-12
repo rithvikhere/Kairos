@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-base: #f5f2ec;
+  --color-ink: #1f2421;
+  --color-accent: #3a5a6b;
+  --color-neutral: #e8e3d8;
+  --color-risk-low: #e6ede3;
+  --color-risk-mod: #f2e6c8;
+  --color-risk-high: #eccb9c;
+  --color-risk-crit: #d99a8a;
+}
+
+body {
+  background-color: #f5f2ec;
+  color: #1f2421;
+  font-family: var(--font-plus-jakarta), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+/* Custom selection highlight matching accent color */
+::selection {
+  background-color: #3a5a6b;
+  color: #f5f2ec;
+}
+
+/* Accessibility: prefers-reduced-motion global suppression */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

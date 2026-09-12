@@ -6,6 +6,9 @@ dist/
 coverage/
 *.lcov
 .nyc_output
+.next/
+test-results/
+playwright-report/
 
 # Logs & Environment
 logs

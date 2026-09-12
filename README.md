@@ -213,15 +213,67 @@ npm test
 | `src/ai/__tests__/parseScenarioIntent.test.ts` | Phase 6 | 6 | Multi-field structured JSON extraction, error handling, unconfigured AI |
 | `src/app/api/ai/__tests__/parse-intent.test.ts` | Phase 6 | 4 | POST /api/ai/parse-intent endpoint (200, 400, 503 AI_UNAVAILABLE) |
 | `src/app/api/ai/__tests__/explain-diff.test.ts` | Phase 6 | 4 | POST /api/ai/explain-diff endpoint (200 AI, 200 template, 404) |
-| **Total** | **Phases 1–6** | **193** | **All suites passing with zero errors** |
+| `src/lib/__tests__/riskBand.test.ts` | Phase 7 | 10 | RiskBand threshold boundaries, FEASIBILITY_RISK_THRESHOLD alignment, color map |
+| `src/lib/__tests__/api-client.test.ts` | Phase 7 | 9 | Fetch wrapper, query serialization, confirm=true on delete, ApiClientError codes |
+| `src/components/background/__tests__/RiskSilkBackground.test.tsx` | Phase 7 | 3 | WebGL Silk integration, prefers-reduced-motion static fallback fill |
+| `src/components/diff/__tests__/ScenarioDiffTable.test.tsx` | Phase 7 | 1 | All input lever shifts & output metric deltas rendered with direction arrows |
+| `src/components/diff/__tests__/DiffExplanationPanel.test.tsx` | Phase 7 | 2 | Distinct rendering of AI-generated vs Computed directly badges |
+| **Total (Vitest)** | **Phases 1–7** | **218** | **All 19 suites passing with 100% success** |
+| `e2e/scenario-flow.spec.ts` | Phase 7 | 1 (E2E) | Full happy path: create project → build scenario → fork via NL → compare → explanation |
 
-Run test suite with coverage:
+---
+
+## Phase 7: Frontend Architecture & User Interface
+
+Phase 7 delivers the complete frontend presentation layer for Kairos, purposely rejecting generic "AI SaaS" templates (blue/purple gradients, generic rounded cards on pure white) in favor of an editorial, warm, publication-grade analytical aesthetic.
+
+### 1. Palette System & Chromatic Rationale
+
+The palette establishes a strict distinction between **cool interactive chrome** and **warm functional risk indicators**:
+
+| Token | Hex | Role | Visual Rationale |
+|---|---|---|---|
+| **Base** | `#f5f2ec` | Background | Warm bone — replaces pure `#ffffff` to reduce glare and convey warmth. |
+| **Ink** | `#1f2421` | Typography & Icons | Deep forest-charcoal — soft high-contrast dark tone. |
+| **Accent** | `#3a5a6b` | Primary controls & focus | Deep petrol/slate-teal (cool) — solid color representing "this is the application chrome". |
+| **Neutral** | `#e8e3d8` | Borders & Cards | Warm greige card and divider lines. |
+| **Risk: Low** | `#e6ede3` | RiskBand: `low` | Soft sage — calm, feasible. |
+| **Risk: Moderate** | `#f2e6c8` | RiskBand: `moderate` | Honey amber — feasible warning territory. |
+| **Risk: High** | `#eccb9c` | RiskBand: `high` | Amber copper — infeasible zone entrance (riskScore ≥ 50). |
+| **Risk: Critical** | `#d99a8a` | RiskBand: `critical` | Deep brick red — extreme schedule/cost strain or explicit infeasibility. |
+
+### 2. Typography Pairing
+- **Headings & Scenario Display Names**: **Fraunces** (Google Fonts variable serif display face, editorial and dignified).
+- **Data, Numbers, Metrics & UI Chrome**: **Plus Jakarta Sans** (Google Fonts crisp geometric grotesque with high tabular legibility).
+
+### 3. RiskBand Derivation (`src/lib/riskBand.ts`)
+A pure client-side derivation aligned with `FEASIBILITY_RISK_THRESHOLD = 50`:
+- `riskScore < 25` → `"low"`
+- `25 <= riskScore < 50` → `"moderate"` (feasible)
+- `50 <= riskScore < 75` → `"high"` (infeasible zone begins here)
+- `riskScore >= 75` OR `!feasible` → `"critical"`
+
+### 4. Animation Strategy & React Bits Primitives
+- **Interactive WebGL Background**: `Silk-TS-TW` (`@react-bits/Silk-TS-TW`) via Three.js / React Three Fiber, interpolating colors and noise intensity across risk bands. Falls back to static SVG fill when `prefers-reduced-motion` is detected.
+- **Dynamic Counters**: `CountUp-TS-TW` (`@react-bits/CountUp-TS-TW`) provides real-time smooth numeric interpolation during slider drags and preview updates.
+- **Narrative Explanation Reveal**: `TextType-TS-TW` (`@react-bits/TextType-TS-TW`) simulates an editorial typewriter reveal for diff explanations client-side without artificial streaming.
+- **Physics**: Confident weighty press (`scale: 0.96`) for primary actions; deliberate, resistant, slower hover feel for destructive actions.
+
+### 5. Data Layer Discipline
+- `src/lib/api-client.ts` is the **single `fetch()` call site** across the entire application.
+- Server state is managed exclusively by **TanStack Query** hooks (`useProjects`, `useScenarios`, `useScenarioDiff`, `useScenarioSimulatePreview`).
+- UI-only state (sidebar collapsed, scenario comparison pair) is isolated in **Zustand** (`src/stores/uiStore.ts`).
+
+### 6. Verification
 ```bash
-npx vitest run --coverage
+# Run unit & component tests (218 passing across 19 suites)
+npm test
+
+# Run End-to-End browser test (Chromium, in-memory mode)
+npx playwright test
+
+# Build production Next.js bundle
+npm run build
 ```
 
-Type check:
-```bash
-npx tsc --noEmit
-```
 
