@@ -41,6 +41,17 @@ Located in `src/data/` (`schema.ts`, `setup.sql`, `db.ts`):
   - Distinct soft delete (`setArchived`) vs. hard delete (`deleteScenario`).
   - Search provides case-insensitive substring matching on name/description and strict AND matching across all queried tags.
 
+### Phase 4 — Pairwise Diff & Risk Attribution Engine
+Located in `src/domain/` (`diff.ts`):
+- **Three-Tier Pairwise Comparison**: Compares two saved scenarios (`ScenarioRecord`) across:
+  1. Input parameter shifts, resolving distributions (`fixed`, `normal` by mean, `uniform` by midpoint) to representative scalar numbers.
+  2. Output metric shifts across all 6 core deterministic metrics (`estimatedTimeWeeks`, `effectiveHeadcount`, `actualCost`, `budgetUtilization`, `scheduleUtilization`, `riskScore`), nested `riskBreakdown` components (`scheduleRisk`, `budgetRisk`, `staffingRisk`), and boolean `feasible` transition tracking.
+  3. Monte Carlo probabilistic shifts across `probabilityOnTime`, `probabilityWithinBudget`, and `feasibleRate` (null if either scenario lacks Monte Carlo data).
+- **Fieldwise Deltas (`fieldwiseDelta`)**: Computes literal `delta`, `percentChange` (`null` when `from === 0` to prevent division-by-zero or `Infinity`/`NaN`), and `direction` (`"increased" | "decreased" | "unchanged"`).
+- **Single-Variable Risk Attribution (`simulate()` Probing)**: Evaluates each changed input in isolation against scenario A's baseline using the pure `simulate()` engine to determine `isolatedRiskScore` and `isolatedRiskContribution`, sorted by `|isolatedRiskContribution|` descending.
+- **Mathematical Integrity & Non-Additivity**: Acknowledges and preserves the non-linear interaction effect between variables resulting from Brooks's Law team efficiency curves and piecewise risk thresholds — individual contributions are never artificially normalized or rescaled.
+- **Dual-Interface Consumption**: Pure `diffScenarios()` for in-memory / zero-I/O comparison, accompanied by `diffScenariosById()` for database-backed scenario resolution via `getScenario()`.
+
 ---
 
 ## Directory Structure
@@ -53,16 +64,18 @@ decision-sim/
 │   │   ├── types.ts                  # Core domain types (ScenarioInputs, SimulationResult)
 │   │   ├── simulation.ts             # Deterministic simulation engine (simulate())
 │   │   ├── monteCarlo.ts             # Probabilistic Monte Carlo engine & runner
+│   │   ├── diff.ts                   # Phase 4 pairwise diff & risk attribution engine
 │   │   ├── index.ts                  # Public domain barrel export
 │   │   └── __tests__/
 │   │       ├── simulation.test.ts    # Phase 1 unit tests (35 tests)
-│   │       └── monteCarlo.test.ts    # Phase 2 Monte Carlo tests (37 tests)
+│   │       ├── monteCarlo.test.ts    # Phase 2 Monte Carlo tests (37 tests)
+│   │       └── diff.test.ts          # Phase 4 diff & attribution tests (14 tests)
 │   └── data/
 │       ├── schema.ts                 # Database entity records & error classes
 │       ├── setup.sql                 # DDL migration script with all 6 indexes
 │       ├── db.ts                     # Dual-mode (Postgres + in-memory fallback) database engine
 │       └── __tests__/
-│           └── db.test.ts            # Phase 3 persistence unit tests (21 tests)
+│           └── db.test.ts            # Phase 3 persistence unit tests (24 tests)
 ├── package.json
 ├── tsconfig.json
 └── vitest.config.ts
