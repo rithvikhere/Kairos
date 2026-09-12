@@ -52,6 +52,26 @@ Located in `src/domain/` (`diff.ts`):
 - **Mathematical Integrity & Non-Additivity**: Acknowledges and preserves the non-linear interaction effect between variables resulting from Brooks's Law team efficiency curves and piecewise risk thresholds — individual contributions are never artificially normalized or rescaled.
 - **Dual-Interface Consumption**: Pure `diffScenarios()` for in-memory / zero-I/O comparison, accompanied by `diffScenariosById()` for database-backed scenario resolution via `getScenario()`.
 
+### Phase 5 — Next.js API Routes
+Located in `src/app/api/` and `src/lib/api/`:
+- **App Router REST API Endpoints**: Exposes domain, data, and diff layers via 16 modular Next.js API route handlers:
+  - `/api/projects`: POST (create), GET (list)
+  - `/api/projects/[id]`: GET (lookup), DELETE (guarded hard delete with `?confirm=true` and `PROJECT_NOT_EMPTY` protection)
+  - `/api/projects/[id]/tags`: PATCH (update curated tag suggestions)
+  - `/api/scenarios`: POST (create scenario with server-side simulation calculation and optional Monte Carlo), GET (list by project)
+  - `/api/scenarios/[id]`: GET (lookup), PATCH (update metadata), DELETE (guarded hard delete with `?confirm=true`)
+  - `/api/scenarios/[id]/favorite`: POST (toggle favorite state)
+  - `/api/scenarios/[id]/archive`: POST (update soft-delete / archived state)
+  - `/api/scenarios/[id]/children`: GET (retrieve child branched scenarios)
+  - `/api/scenarios/search`: GET (search scenarios by text query, tag filter, and favorite filter)
+  - `/api/simulate`: POST (pure deterministic simulation execution without storage I/O)
+  - `/api/simulate/monte-carlo`: POST (pure probabilistic Monte Carlo simulation execution without storage I/O)
+  - `/api/diff`: GET (pairwise scenario diffing and single-variable risk attribution via `?a=&b=`)
+- **Uniform Response Envelope**: Every route strictly returns either `{ data: <payload> }` (HTTP 200) or `{ error: { code: string, message: string } }` (HTTP 4xx/5xx).
+- **Domain & Output Integrity**: Enforces that client-supplied `deterministic_output` is never trusted or forwarded; the server always runs `simulate()` directly on the resolved inputs.
+- **Input Validation via Zod**: Comprehensive request schemas in `src/lib/api/schemas.ts` with discriminated unions for probability distributions (`fixed`, `normal`, `uniform`).
+- **Strict Error Guardrails**: Centralized error translation in `src/lib/api/errors.ts` mapping validation errors (400), confirmation requirements (400), not found errors (404), non-empty project deletions (409), and internal server errors (500 without leaking stack traces).
+
 ---
 
 ## Directory Structure
@@ -59,6 +79,42 @@ Located in `src/domain/` (`diff.ts`):
 ```
 decision-sim/
 ├── src/
+│   ├── app/
+│   │   └── api/
+│   │       ├── projects/
+│   │       │   ├── route.ts          # POST (create), GET (list)
+│   │       │   └── [id]/
+│   │       │       ├── route.ts      # GET (lookup), DELETE (delete)
+│   │       │       └── tags/
+│   │       │           └── route.ts  # PATCH (update tag suggestions)
+│   │       ├── scenarios/
+│   │       │   ├── route.ts          # POST (create), GET (list by project)
+│   │       │   ├── search/
+│   │       │   │   └── route.ts      # GET (search scenarios)
+│   │       │   └── [id]/
+│   │       │       ├── route.ts      # GET (lookup), PATCH (update), DELETE (delete)
+│   │       │       ├── favorite/
+│   │       │       │   └── route.ts  # POST (toggle favorite)
+│   │       │       ├── archive/
+│   │       │       │   └── route.ts  # POST (set archived)
+│   │       │       └── children/
+│   │       │           └── route.ts  # GET (get children)
+│   │       ├── simulate/
+│   │       │   ├── route.ts          # POST (pure deterministic simulate)
+│   │       │   └── monte-carlo/
+│   │       │       └── route.ts      # POST (pure Monte Carlo simulate)
+│   │       ├── diff/
+│   │       │   └── route.ts          # GET (pairwise scenario diff)
+│   │       └── __tests__/
+│   │           ├── projects.test.ts  # Projects API integration tests (12 tests)
+│   │           ├── scenarios.test.ts # Scenarios API integration tests (22 tests)
+│   │           ├── simulate.test.ts  # Simulation API integration tests (4 tests)
+│   │           └── diff.test.ts      # Diff API integration tests (3 tests)
+│   ├── lib/
+│   │   └── api/
+│   │       ├── schemas.ts            # Zod request body schemas
+│   │       ├── respond.ts            # Response envelope helpers (ok/fail)
+│   │       └── errors.ts             # ApiError class & centralized error handler
 │   ├── domain/
 │   │   ├── constants.ts              # Calibration numbers & weights
 │   │   ├── types.ts                  # Core domain types (ScenarioInputs, SimulationResult)
