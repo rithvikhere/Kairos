@@ -1,18 +1,17 @@
 import { test, expect } from "@playwright/test";
 
-test.describe("Phase 7 E2E: Full Happy-Path Scenario Lifecycle", () => {
-  test("create project -> build scenario -> save -> fork via NL -> compare -> read explanation", async ({
+test.describe("Phase 7 E2E: Unified Kairos Dashboard Lifecycle", () => {
+  test("create project on dashboard -> build scenario -> fork via NL -> compare scenarios -> run Monte Carlo", async ({
     page,
   }) => {
     // 1. Intercept AI parse-intent to provide deterministic structured intent
-    // (ensuring the visual chips reveal and confirmation flow is exercised in CI / offline envs)
     await page.route("**/api/ai/parse-intent", async (route) => {
       const body = route.request().postDataJSON();
       const baseline = body.baselineInputs || {
-        budget: 500000,
-        headcount: 8,
-        deadlineWeeks: 20,
-        scope: 480,
+        budget: 250000,
+        headcount: 10,
+        deadlineWeeks: 14,
+        scope: 140,
       };
 
       await route.fulfill({
@@ -28,14 +27,14 @@ test.describe("Phase 7 E2E: Full Happy-Path Scenario Lifecycle", () => {
               budget: baseline.budget + 100000,
               headcount: baseline.headcount + 2,
               deadlineWeeks: baseline.deadlineWeeks,
-              scope: baseline.scope || 480,
+              scope: baseline.scope || 140,
             },
           },
         }),
       });
     });
 
-    // 2. Landing Page: Verify landing experience and navigate to workspace
+    // 2. Landing Page: Verify landing experience and navigate to dashboard
     await page.goto("/");
     await expect(page).toHaveTitle(/Kairos/i);
     await expect(page.getByText("Every decision")).toBeVisible();
@@ -52,7 +51,7 @@ test.describe("Phase 7 E2E: Full Happy-Path Scenario Lifecycle", () => {
     await page.getByTestId("hero-enter-btn").click();
     await expect(page).toHaveURL("/projects");
 
-    // Open Create Project modal
+    // 3. Open Create Project modal directly on the second page
     await page.getByRole("button", { name: /new project/i }).click();
     await expect(page.getByText("Create New Project")).toBeVisible();
 
@@ -64,40 +63,27 @@ test.describe("Phase 7 E2E: Full Happy-Path Scenario Lifecycle", () => {
     // Submit project creation
     await page.getByRole("button", { name: "Create Project" }).click();
 
-    // Verify redirect to project scenario list
-    await expect(page).toHaveURL(/\/projects\/[a-zA-Z0-9-]+/);
-    await expect(page.getByRole("heading", { name: "E2E Alpha Initiative" })).toBeVisible();
+    // Verify stays on /projects with the newly created project active
+    await expect(page).toHaveURL(/\/projects\?projectId=[a-zA-Z0-9-]+/);
+    await expect(page.getByText("E2E Alpha Initiative")).toBeVisible();
 
-    // 3. Scenario Builder: Build baseline scenario via sliders
-    await page.getByRole("button", { name: /build new scenario/i }).click();
-    await expect(page).toHaveURL(/\/projects\/[a-zA-Z0-9-]+\/scenarios\/new/);
+    // 4. Scenario Builder: Build and save baseline plan directly on the dashboard
+    await page.getByRole("button", { name: /new scenario/i }).click();
+    await expect(page.getByText("Build New Scenario")).toBeVisible();
 
-    // Set scenario name
+    // Name scenario
     const nameInput = page.getByPlaceholder(/Aggressive Delivery/i);
     await nameInput.clear();
     await nameInput.fill("Baseline Plan");
 
-    // Verify live preview is responsive and displaying simulation results
-    await expect(page.getByText("Live Preview")).toBeVisible();
-    await expect(page.getByText("/ 100")).toBeVisible();
-
     // Save baseline scenario
     await page.getByRole("button", { name: /save scenario/i }).click();
 
-    // Save confirmation dialog opens
-    await expect(page.getByText("Scenario Successfully Saved")).toBeVisible();
-    await page.getByRole("button", { name: /open scenario detail/i }).click();
+    // 5. Fork / Build variant using Natural Language Intent Bar
+    await page.getByRole("button", { name: /new scenario/i }).click();
+    await expect(page.getByText("Build New Scenario")).toBeVisible();
 
-    // 4. Scenario Detail: Verify baseline metrics & click Fork
-    await expect(page).toHaveURL(/\/projects\/[a-zA-Z0-9-]+\/scenarios\/[a-zA-Z0-9-]+/);
-    await expect(page.getByRole("heading", { name: "Baseline Plan" })).toBeVisible();
-
-    // Fork scenario
-    await page.getByRole("button", { name: /fork scenario/i }).click();
-    await expect(page).toHaveURL(/\/projects\/[a-zA-Z0-9-]+\/scenarios\/new\?parentScenarioId=/);
-
-    // 5. Fork via Natural Language Intent Bar
-    // Name the variant
+    // Name variant
     const variantNameInput = page.getByPlaceholder(/Aggressive Delivery/i);
     await variantNameInput.clear();
     await variantNameInput.fill("Forked Resilient Variant");
@@ -108,57 +94,21 @@ test.describe("Phase 7 E2E: Full Happy-Path Scenario Lifecycle", () => {
     await page.getByRole("button", { name: /extract intent/i }).click();
 
     // Verify intent visibly resolves into structured chips
-    await expect(page.getByText("Extracted Modifications")).toBeVisible();
-    await expect(page.getByText(/Budget:/i)).toBeVisible();
+    await expect(page.getByText("Extracted Modifications:")).toBeVisible();
+    await expect(page.getByText(/budget:/i)).toBeVisible();
 
-    // Confirm & apply the delta
-    await page.getByRole("button", { name: /confirm & apply to sliders/i }).click();
-
-    // Save the forked scenario
+    // Save forked scenario
     await page.getByRole("button", { name: /save scenario/i }).click();
-    await expect(page.getByText("Scenario Successfully Saved")).toBeVisible();
-    await page.getByRole("button", { name: /open scenario detail/i }).click();
 
-    // Verify detail page of forked scenario
-    await expect(page.getByRole("heading", { name: "Forked Resilient Variant" })).toBeVisible();
+    // 6. Compare Scenarios: Open comparison modal & verify attribution
+    await page.getByRole("button", { name: /compare scenarios/i }).click();
+    await expect(page.getByText("Scenario Comparison & Attribution")).toBeVisible();
+    await expect(page.getByText("Primary Isolated Risk Driver")).toBeVisible();
+    await page.getByRole("button", { name: "Done" }).click();
 
-    // 6. Navigate back to Project page to compare scenarios
-    await page.getByRole("link", { name: "E2E Alpha Initiative" }).click();
-    await expect(page.getByRole("heading", { name: "E2E Alpha Initiative" })).toBeVisible();
-
-    // Verify both scenarios are present
-    await expect(page.getByRole("heading", { name: "Baseline Plan" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Forked Resilient Variant" })).toBeVisible();
-
-    // Toggle compare affordances on both scenario cards
-    const compareButtons = page.getByTitle("Select for comparison");
-    await compareButtons.first().click();
-    await compareButtons.first().click(); // Next available unselected card
-
-    // Verify Pairwise Diff floating banner appears and click Run Pairwise Diff
-    const diffButton = page.getByRole("button", { name: /run pairwise diff/i });
-    await expect(diffButton).toBeVisible();
-    await diffButton.click();
-
-    // 7. Pairwise Diff View: Verify deltas, attribution, and AI / fallback explanation
-    await expect(page).toHaveURL(/\/projects\/[a-zA-Z0-9-]+\/compare\?a=[a-zA-Z0-9-]+&b=[a-zA-Z0-9-]+/);
-    await expect(page.getByText("Pairwise Scenario Comparison")).toBeVisible();
-
-    // Verify ScenarioDiffTable inputs & outputs
-    await expect(page.getByText("Scenario Input Levers")).toBeVisible();
-    await expect(page.getByText("Deterministic Simulation Outputs")).toBeVisible();
-    await expect(page.getByText("Budget Available")).toBeVisible();
-    await expect(page.getByText("Team Headcount")).toBeVisible();
-
-    // Verify Attribution chart is present
-    await expect(page.getByText("Single-Variable Risk Attribution")).toBeVisible();
-
-    // Verify Diff Explanation Panel with real explanation & badge
-    await expect(page.getByText("Scenario Narrative & Risk Analysis")).toBeVisible();
-    // In in-memory mode without external LLM keys, Phase 6 computes directly via template-fallback:
-    const badge = page.getByTestId("source-badge-template");
-    await expect(badge).toBeVisible();
-    await expect(badge).toHaveText(/Computed directly/);
-    await expect(page.getByTestId("diff-explanation-content")).toBeVisible();
+    // 7. Run Monte Carlo simulation on the dashboard
+    await page.getByRole("button", { name: /run monte carlo/i }).click();
+    await expect(page.getByText("Sampling 1,000 runs...")).toBeVisible();
+    await expect(page.getByText("Monte Carlo (2,000 Iterations)")).toBeVisible();
   });
 });

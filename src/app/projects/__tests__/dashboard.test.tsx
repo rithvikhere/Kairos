@@ -129,4 +129,57 @@ describe("ProjectsDashboardPage — Interactive Workable Dashboard", () => {
 
     expect(screen.getByText(/Sampling 1,000 runs\.\.\./i)).toBeInTheDocument();
   });
+
+  it("filters scenarios using search input and status tabs", () => {
+    renderDashboard();
+
+    // Verify all 3 initial scenarios
+    expect(screen.getByText(/1\. Baseline Scope/i)).toBeInTheDocument();
+    expect(screen.getByText(/2\. Accelerated Q3/i)).toBeInTheDocument();
+    expect(screen.getByText(/3\. Contractor Surge/i)).toBeInTheDocument();
+
+    // Type into search filter
+    const searchInput = screen.getByPlaceholderText(/Filter scenarios\.\.\./i);
+    fireEvent.change(searchInput, { target: { value: "Contractor" } });
+
+    expect(screen.queryByText(/1\. Baseline Scope/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/3\. Contractor Surge/i)).toBeInTheDocument();
+
+    // Clear search
+    fireEvent.change(searchInput, { target: { value: "" } });
+
+    // Switch to Favorites tab
+    const favTab = screen.getByRole("button", { name: /Fav \(/i });
+    fireEvent.click(favTab);
+
+    // Accelerated Q3 is favorite in preset
+    expect(screen.getByText(/2\. Accelerated Q3/i)).toBeInTheDocument();
+  });
+
+  it("opens Build New Scenario modal and allows building scenarios on the dashboard", () => {
+    renderDashboard();
+
+    const buildBtn = screen.getAllByRole("button", { name: /build/i })[0];
+    fireEvent.click(buildBtn!);
+
+    expect(screen.getByText("Build New Scenario")).toBeVisible();
+    expect(screen.getByText("Natural Language Lever Adjuster")).toBeInTheDocument();
+
+    // Cancel modal
+    const cancelBtn = screen.getByRole("button", { name: "Cancel" });
+    fireEvent.click(cancelBtn);
+    expect(screen.queryByText("Natural Language Lever Adjuster")).not.toBeInTheDocument();
+  });
+
+  it("opens New Project dialog directly on the second page without redirecting", () => {
+    renderDashboard();
+
+    const newProjBtn = screen.getByRole("button", { name: /New Project/i });
+    fireEvent.click(newProjBtn);
+
+    expect(screen.getByText("Create New Project")).toBeVisible();
+    expect(
+      screen.getByPlaceholderText(/Platform Re-architecture/i)
+    ).toBeInTheDocument();
+  });
 });

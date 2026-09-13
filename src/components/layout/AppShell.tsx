@@ -19,7 +19,7 @@ export interface AppShellProps {
  */
 export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   const pathname = usePathname();
-  const isStandalone = pathname === "/" || pathname === "/projects";
+  const isStandalone = pathname === "/" || pathname.startsWith("/projects");
 
   if (isStandalone) {
     return (
