@@ -160,20 +160,41 @@ export function diffScenarios(
   const constraintsOnlyInA = activeA.filter((k) => !activeSetB.has(k));
   const constraintsOnlyInB = activeB.filter((k) => !activeSetA.has(k));
 
-  // 1. inputDiff across common active constraints
+  // 1. inputDiff across all active constraints in either scenario
+  const allActiveKeys = Array.from(new Set([...activeA, ...activeB])) as ConstraintKey[];
   const inputDiff: InputDiff = {};
-  for (const key of commonConstraints) {
-    const valA = resolveRepresentativeNumber(inputsA[key]!.value);
-    const valB = resolveRepresentativeNumber(inputsB[key]!.value);
-    inputDiff[key] = fieldwiseDelta(valA, valB);
+  for (const key of allActiveKeys) {
+    const isA = activeSetA.has(key);
+    const isB = activeSetB.has(key);
+    const valA = isA ? resolveRepresentativeNumber(inputsA[key]!.value) : 0;
+    const valB = isB ? resolveRepresentativeNumber(inputsB[key]!.value) : 0;
+    if (!isA && isB) {
+      inputDiff[key] = {
+        from: 0,
+        to: valB,
+        delta: valB,
+        percentChange: 100,
+        direction: "increased",
+      };
+    } else if (isA && !isB) {
+      inputDiff[key] = {
+        from: valA,
+        to: 0,
+        delta: -valA,
+        percentChange: -100,
+        direction: "decreased",
+      };
+    } else {
+      inputDiff[key] = fieldwiseDelta(valA, valB);
+    }
   }
 
   // 2. outputDiff across common computed outputs
-  const outA = scenarioA.deterministic_output;
-  const outB = scenarioB.deterministic_output;
+  const outA = scenarioA.deterministic_output ?? simulate({ constraints: inputsA });
+  const outB = scenarioB.deterministic_output ?? simulate({ constraints: inputsB });
 
-  const compA = outA.computed || (outA as any);
-  const compB = outB.computed || (outB as any);
+  const compA = outA?.computed || (outA as any) || {};
+  const compB = outB?.computed || (outB as any) || {};
 
   const compKeysA = Object.keys(compA).filter((k) => typeof compA[k] === "number");
   const compKeysB = Object.keys(compB).filter((k) => typeof compB[k] === "number");
@@ -191,11 +212,11 @@ export function diffScenarios(
   }
 
   // Always diff overall riskScore and feasibility
-  outputDiff.riskScore = fieldwiseDelta(outA.riskScore, outB.riskScore);
+  outputDiff.riskScore = fieldwiseDelta(outA?.riskScore ?? 0, outB?.riskScore ?? 0);
   outputDiff.feasible = {
-    from: outA.feasible,
-    to: outB.feasible,
-    changed: outA.feasible !== outB.feasible,
+    from: outA?.feasible ?? false,
+    to: outB?.feasible ?? false,
+    changed: (outA?.feasible ?? false) !== (outB?.feasible ?? false),
   };
 
   // Backwards compatibility for legacy test assertions checking outputDiff.riskBreakdown
@@ -223,9 +244,9 @@ export function diffScenarios(
 
   // 3. monteCarloDiff
   let monteCarloDiff: MonteCarloDiff | null = null;
-  if (scenarioA.monte_carlo_output !== null && scenarioB.monte_carlo_output !== null) {
-    const mcA = scenarioA.monte_carlo_output;
-    const mcB = scenarioB.monte_carlo_output;
+  if (Boolean(scenarioA.monte_carlo_output) && Boolean(scenarioB.monte_carlo_output)) {
+    const mcA = scenarioA.monte_carlo_output!;
+    const mcB = scenarioB.monte_carlo_output!;
     monteCarloDiff = {
       probabilityOnTime: fieldwiseDelta(mcA.probabilityOnTime, mcB.probabilityOnTime),
       probabilityWithinBudget: fieldwiseDelta(
@@ -247,7 +268,7 @@ export function diffScenarios(
   ];
 
   // 5. Attribution: changed active constraints in both scenarios
-  const changedConstraints = commonConstraints.filter(
+  const changedConstraints = allActiveKeys.filter(
     (field) => inputDiff[field]?.direction !== "unchanged"
   );
 
@@ -264,9 +285,10 @@ export function diffScenarios(
       }
     }
 
+    const isB = inputsB[field]?.enabled ?? false;
     probeConstraints[field] = {
-      enabled: true,
-      value: resolveRepresentativeNumber(inputsB[field]!.value),
+      enabled: isB,
+      value: isB ? resolveRepresentativeNumber(inputsB[field]!.value) : 0,
     };
 
     const probeInputs: ScenarioInputs = { constraints: probeConstraints };

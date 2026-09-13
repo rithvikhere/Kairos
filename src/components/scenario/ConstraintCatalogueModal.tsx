@@ -289,7 +289,7 @@ export function ConstraintCatalogueModal({
               <Sliders className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="font-serif text-lg font-bold text-ink">Configure Scenario Constraints</h2>
+              <h2 className="font-serif text-xl sm:text-2xl font-bold text-ink">Configure Scenario Constraints</h2>
               <p className="text-xs text-ink/60">
                 Toggle and calibrate the 15 uniform levers that govern simulation computation
               </p>

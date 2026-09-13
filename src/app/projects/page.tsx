@@ -166,6 +166,7 @@ const DEFAULT_SCENARIOS: ScenarioState[] = [
     deadlineWeeks: 20,
     budget: 200000,
     scope: 120,
+    constraints: createDefaultConstraints(6, 20, 200000, 120),
     isForked: false,
     riskStatus: "Feas",
     isFavorite: false,
@@ -181,6 +182,7 @@ const DEFAULT_SCENARIOS: ScenarioState[] = [
     deadlineWeeks: 14,
     budget: 250000,
     scope: 140,
+    constraints: createDefaultConstraints(10, 14, 250000, 140),
     isForked: true,
     riskStatus: "Risk",
     isFavorite: true,
@@ -196,6 +198,11 @@ const DEFAULT_SCENARIOS: ScenarioState[] = [
     deadlineWeeks: 16,
     budget: 280000,
     scope: 140,
+    constraints: {
+      ...createDefaultConstraints(8, 16, 280000, 140),
+      distributedTeamOverhead: { enabled: true, value: 3 },
+      teamSeniorityMix: { enabled: true, value: 0.35 },
+    },
     isForked: true,
     riskStatus: "Mod",
     isFavorite: false,
@@ -586,13 +593,24 @@ function ProjectsDashboardContent() {
   const liveDiff = useMemo(() => {
     try {
       return diffScenarios(
-        { inputs: { constraints: baselineConstraints } },
-        { inputs: { constraints: scenarioConstraints } }
+        {
+          id: baselineScenario?.id ?? "sc-1",
+          name: baselineScenario?.name ?? "Baseline Scope",
+          inputs: { constraints: baselineConstraints },
+          deterministic_output: baselineSim,
+        },
+        {
+          id: activeScenario.id,
+          name: activeScenario.name,
+          inputs: { constraints: scenarioConstraints },
+          deterministic_output: simResult,
+        }
       );
-    } catch {
+    } catch (err) {
+      console.error("Live diff error:", err);
       return null;
     }
-  }, [baselineConstraints, scenarioConstraints]);
+  }, [baselineScenario, baselineConstraints, baselineSim, activeScenario, scenarioConstraints, simResult]);
 
   // Re-run Monte Carlo dynamically when constraints change so scatter plot & distributions update live!
   useEffect(() => {
@@ -837,27 +855,28 @@ function ProjectsDashboardContent() {
     }
   };
 
-  // Trigger Monte Carlo Simulation
+  // Trigger Monte Carlo Simulation (supports 2,500 iterations with probability distribution sampling)
   const handleRunMonteCarlo = () => {
     setIsSimulatingMC(true);
     setShowProgressAnimation(true);
     try {
-      const res = runMonteCarloSimulation(
-        { constraints: scenarioConstraints },
-        {
-          iterations: 1000,
-          recordCheckpoints: { every: 50 },
-          sampleTrials: { count: 150 },
-        }
-      );
-      setMcResult(res);
-      setMcRunCount(1000);
+      const activeCount = Object.values(scenarioConstraints).filter((s) => s?.enabled).length;
+      if (activeCount > 0) {
+        const uncertain = buildUncertainInputs(scenarioConstraints);
+        const res = runMonteCarloSimulation(uncertain, {
+          iterations: 2500,
+          recordCheckpoints: { every: 25 },
+          sampleTrials: { count: 200 },
+        });
+        setMcResult(res);
+        setMcRunCount(2500);
+      }
     } catch (err) {
       console.error("Monte Carlo run error:", err);
     }
     setTimeout(() => {
       setIsSimulatingMC(false);
-    }, 300);
+    }, 350);
   };
 
   // Dynamic Histogram bar heights and colors based on timeline distribution
@@ -895,11 +914,8 @@ function ProjectsDashboardContent() {
         {/* Top Window Chrome Bar */}
         <div className="w-full flex items-center justify-between px-4 sm:px-6 py-2.5 bg-[#ede9e0] border-b border-[#221f1b]/10 text-xs font-sans text-[#221f1b]/60">
           <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-[#221f1b]/20 hover:bg-red-400 transition-colors" />
-            <span className="w-3 h-3 rounded-full bg-[#221f1b]/20 hover:bg-amber-400 transition-colors" />
-            <span className="w-3 h-3 rounded-full bg-[#221f1b]/20 hover:bg-green-400 transition-colors" />
-            <span className="ml-3 font-mono text-[11px] text-[#221f1b]/60 hidden sm:inline-block">
-              kairos.app/projects/{activeProject.id !== "default" ? activeProject.id : "cloud-infra-2025"}/scenarios
+            <span className="font-serif italic font-black tracking-widest text-base sm:text-lg text-[#2c4356]">
+              KAIROS
             </span>
           </div>
 
@@ -1224,16 +1240,6 @@ function ProjectsDashboardContent() {
               </div>
             </div>
 
-            {/* Sidebar Bottom Card: Brooks's Law Overhead Model */}
-            <div className="p-3 rounded-xl bg-white/70 border border-[#221f1b]/10 text-xs space-y-1 font-sans mt-2">
-              <div className="text-[11px] text-[#221f1b]/60">Brooks&apos;s Law Model</div>
-              <div className="font-mono text-[#2c4356] font-semibold text-xs">
-                Overhead factor {simulation.overheadFactor.toFixed(2)}x
-              </div>
-              <div className="text-[10px] text-[#221f1b]/50">
-                {simulation.dragPenalty.toFixed(2)} eng communication penalty
-              </div>
-            </div>
           </div>
 
           {/* Main Dashboard Column */}
@@ -1285,7 +1291,7 @@ function ProjectsDashboardContent() {
                   ) : (
                     <Play className="w-3.5 h-3.5 fill-current" />
                   )}
-                  <span>{isSimulatingMC ? "Sampling 1,000 runs..." : "Run Monte Carlo"}</span>
+                  <span>{isSimulatingMC ? "Sampling 2,500 runs..." : "Run Monte Carlo (2,500 Runs)"}</span>
                 </button>
               </div>
             </div>
@@ -1521,14 +1527,6 @@ function ProjectsDashboardContent() {
                         Project Levers ({activeLevers.length} active)
                       </span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsConstraintModalOpen(true)}
-                      className="text-[10px] text-[#2c4356] font-mono font-medium hover:underline flex items-center gap-1"
-                    >
-                      <span>Configure All 15</span>
-                      <ArrowRight className="w-3 h-3" />
-                    </button>
                   </div>
 
                   {activeLevers.length === 0 ? (
@@ -1543,7 +1541,7 @@ function ProjectsDashboardContent() {
                       </button>
                     </div>
                   ) : (
-                    <div className="space-y-3 pt-2 max-h-[440px] overflow-y-auto pr-1">
+                    <div className="space-y-3 pt-2 pr-1">
                       {activeLevers.map((meta) => {
                         const currentVal = scenarioConstraints[meta.key]?.value ?? meta.defaultValue;
                         const displayVal =
@@ -1702,6 +1700,17 @@ function ProjectsDashboardContent() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Distribution Explanation & Dynamics */}
+                  <div className="p-2.5 rounded-xl bg-[#faf8f4] border border-[#221f1b]/5 text-[11px] font-sans text-[#221f1b]/75 space-y-1">
+                    <p className="leading-relaxed">
+                      <strong>Distribution Dynamics:</strong> Simulated trial outcomes are evaluated against the {deadlineWeeks}-week target deadline.
+                      Histogram bars indicate timeline density (<span className="text-[#2c4356] font-semibold">blue</span> = on-time completion, <span className="text-[#c98a3e] font-semibold">amber</span> = &le; 2 weeks slippage, and <span className="text-[#b5502f] font-semibold">terracotta</span> = critical schedule breach).
+                    </p>
+                    <p className="text-[10.5px] text-[#221f1b]/60 italic">
+                      90% confidence interval projects delivery between {(mcResult?.estimatedTimeWeeks?.percentiles?.p10 ?? (simulation.estimatedWeeks * 0.9)).toFixed(1)} wks (p10) and {(mcResult?.estimatedTimeWeeks?.percentiles?.p90 ?? (simulation.estimatedWeeks * 1.25)).toFixed(1)} wks (p90).
+                    </p>
+                  </div>
                 </div>
 
                 {/* 2. Trial Scatter Plot Card */}
@@ -1784,47 +1793,76 @@ function ProjectsDashboardContent() {
               />
             </div>
 
-            {/* Bottom Card: Bounded AI Scenario Attribution */}
-            <div className="p-4 rounded-2xl bg-[#faf8f4] border border-[#2c4356]/20 flex items-start gap-3.5 shadow-xs">
-              <div className="w-8 h-8 rounded-lg bg-[#2c4356]/10 text-[#2c4356] flex items-center justify-center flex-shrink-0 mt-0.5">
-                <Sparkles className="w-4 h-4 text-[#2c4356]" />
-              </div>
-              <div className="space-y-1 text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-[#221f1b]">
-                    Bounded AI Scenario Attribution
-                  </span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#2c4356]/10 text-[#2c4356] font-mono font-medium">
-                    Zero Hallucination
-                  </span>
+            {/* Bottom Calculations Row: Brooks's Law Overhead Model & Bounded AI Scenario Attribution */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Brooks's Law Overhead Model (Main Panel Calculation) */}
+              <div className="md:col-span-1 p-4 rounded-2xl bg-white/90 border border-[#221f1b]/10 shadow-xs space-y-2.5 font-sans flex flex-col justify-between">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-[#221f1b]">Brooks&apos;s Law Model</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#2c4356]/10 text-[#2c4356] font-mono font-medium">
+                      Overhead Calculation
+                    </span>
+                  </div>
+                  <div className="text-2xl font-serif font-bold text-[#2c4356]">
+                    {simulation.overheadFactor.toFixed(2)}x
+                  </div>
+                  <div className="text-xs text-[#221f1b]/70 font-medium">
+                    Communication &amp; Ramp Overhead Factor
+                  </div>
                 </div>
-                <p className="text-[#221f1b]/80 leading-relaxed font-sans text-[11.5px]">
-                  {headcount === 10 && deadlineWeeks === 14 && budget === 250000 && scope === 140 ? (
-                    <>
-                      Adding 4 engineers reduced raw sprint capacity requirements by 2.1 weeks, but generated 2.59 equivalent engineers of communication drag (Brooks&apos;s Law). Net delivery date shifts backward by 2.4 weeks past the 14-week deadline.
-                    </>
-                  ) : (
-                    <>
-                      Adding {headcount - 6 >= 0 ? `${headcount - 6}` : `0`} engineers beyond baseline
-                      capacity generated {simulation.dragPenalty.toFixed(2)} equivalent engineers of
-                      communication drag (Brooks&apos;s Law). Net delivery date is computed at{" "}
-                      <span className="font-semibold text-[#221f1b]">
-                        {simulation.estimatedWeeks.toFixed(1)} weeks
-                      </span>
-                      , which is{" "}
-                      <span
-                        className={`font-semibold ${
-                          simulation.scheduleVarianceWeeks > 0 ? "text-[#b5502f]" : "text-[#8ba888]"
-                        }`}
-                      >
-                        {simulation.scheduleVarianceWeeks > 0
-                          ? `${simulation.scheduleVarianceWeeks.toFixed(1)} weeks past`
-                          : `${Math.abs(simulation.scheduleVarianceWeeks).toFixed(1)} weeks ahead of`}
-                      </span>{" "}
-                      the {deadlineWeeks}-week target deadline.
-                    </>
-                  )}
-                </p>
+                <div className="pt-2 border-t border-[#221f1b]/10 text-[11px] text-[#221f1b]/60 space-y-1">
+                  <div>
+                    • <strong>{simulation.dragPenalty.toFixed(2)}</strong> effective eng communication drag
+                  </div>
+                  <div>
+                    • Team size: <strong>{headcount}</strong> engineers ({simulation.effectiveHc.toFixed(1)} net effective capacity)
+                  </div>
+                </div>
+              </div>
+
+              {/* Bounded AI Scenario Attribution */}
+              <div className="md:col-span-2 p-4 rounded-2xl bg-[#faf8f4] border border-[#2c4356]/20 flex items-start gap-3.5 shadow-xs">
+                <div className="w-8 h-8 rounded-lg bg-[#2c4356]/10 text-[#2c4356] flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Sparkles className="w-4 h-4 text-[#2c4356]" />
+                </div>
+                <div className="space-y-1 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-[#221f1b]">
+                      Bounded AI Scenario Attribution
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#2c4356]/10 text-[#2c4356] font-mono font-medium">
+                      Zero Hallucination
+                    </span>
+                  </div>
+                  <p className="text-[#221f1b]/80 leading-relaxed font-sans text-[11.5px]">
+                    {headcount === 10 && deadlineWeeks === 14 && budget === 250000 && scope === 140 ? (
+                      <>
+                        Adding 4 engineers reduced raw sprint capacity requirements by 2.1 weeks, but generated 2.59 equivalent engineers of communication drag (Brooks&apos;s Law). Net delivery date shifts backward by 2.4 weeks past the 14-week deadline.
+                      </>
+                    ) : (
+                      <>
+                        Adding {headcount - 6 >= 0 ? `${headcount - 6}` : `0`} engineers beyond baseline
+                        capacity generated {simulation.dragPenalty.toFixed(2)} equivalent engineers of
+                        communication drag (Brooks&apos;s Law). Net delivery date is computed at{" "}
+                        <span className="font-semibold text-[#221f1b]">
+                          {simulation.estimatedWeeks.toFixed(1)} weeks
+                        </span>
+                        , which is{" "}
+                        <span
+                          className={`font-semibold ${
+                            simulation.scheduleVarianceWeeks > 0 ? "text-[#b5502f]" : "text-[#8ba888]"
+                          }`}
+                        >
+                          {simulation.scheduleVarianceWeeks > 0
+                            ? `${simulation.scheduleVarianceWeeks.toFixed(1)} weeks past`
+                            : `${Math.abs(simulation.scheduleVarianceWeeks).toFixed(1)} weeks ahead of`}
+                        </span>{" "}
+                        the {deadlineWeeks}-week target deadline.
+                      </>
+                    )}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -1836,7 +1874,7 @@ function ProjectsDashboardContent() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
           <div className="w-full max-w-xl rounded-2xl bg-[#faf8f4] border border-[#221f1b]/20 shadow-2xl p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between pb-3 border-b border-[#221f1b]/10">
-              <div className="flex items-center gap-2 font-serif text-lg font-bold text-[#221f1b]">
+              <div className="flex items-center gap-2 font-serif text-xl sm:text-2xl font-bold text-[#221f1b]">
                 <GitCompare className="w-5 h-5 text-[#2c4356]" />
                 <span>Scenario Comparison & Attribution</span>
               </div>
@@ -1860,31 +1898,38 @@ function ProjectsDashboardContent() {
               <div className="divide-y divide-[#221f1b]/10 max-h-[260px] overflow-y-auto">
                 {/* Dynamically render all changed or active parameters */}
                 {liveDiff?.inputDiff && Object.keys(liveDiff.inputDiff).length > 0 ? (
-                  Object.entries(liveDiff.inputDiff).map(([key, delta]) => {
-                    if (!delta) return null;
-                    const meta = CONSTRAINT_CATALOGUE.find((c) => c.key === key);
-                    const label = meta?.label ?? key;
-                    return (
-                      <div key={key} className="grid grid-cols-3 gap-3 py-2 px-3 items-center">
-                        <span className="text-[#221f1b]/70 font-medium">{label}</span>
-                        <span className="font-mono text-[#221f1b]/80">
-                          {formatDiffValue(key, delta.from)}
-                        </span>
-                        <span className="font-mono font-bold text-[#2c4356] flex items-center gap-1">
-                          {formatDiffValue(key, delta.to)}
-                          {delta.delta !== 0 && (
-                            <span
-                              className={`text-[10px] font-normal ${
-                                delta.direction === "increased" ? "text-[#b5502f]" : "text-[#2b5336]"
-                              }`}
-                            >
-                              ({delta.delta > 0 ? `+${delta.delta}` : delta.delta})
-                            </span>
-                          )}
-                        </span>
+                  <>
+                    {!Object.values(liveDiff.inputDiff).some((d) => d && d.delta !== 0) && (
+                      <div className="py-2 px-3 text-center text-ink/60 text-[11px] italic bg-[#ede9e0]/20">
+                        All constraint lever inputs match baseline values.
                       </div>
-                    );
-                  })
+                    )}
+                    {Object.entries(liveDiff.inputDiff).map(([key, delta]) => {
+                      if (!delta) return null;
+                      const meta = CONSTRAINT_CATALOGUE.find((c) => c.key === key);
+                      const label = meta?.label ?? key;
+                      return (
+                        <div key={key} className="grid grid-cols-3 gap-3 py-2 px-3 items-center">
+                          <span className="text-[#221f1b]/70 font-medium">{label}</span>
+                          <span className="font-mono text-[#221f1b]/80">
+                            {formatDiffValue(key, delta.from)}
+                          </span>
+                          <span className="font-mono font-bold text-[#2c4356] flex items-center gap-1">
+                            {formatDiffValue(key, delta.to)}
+                            {delta.delta !== 0 && (
+                              <span
+                                className={`text-[10px] font-normal ${
+                                  delta.direction === "increased" ? "text-[#b5502f]" : "text-[#2b5336]"
+                                }`}
+                              >
+                                ({delta.delta > 0 ? `+${delta.delta}` : delta.delta})
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </>
                 ) : (
                   <div className="py-2.5 px-3 text-center text-ink/50 text-[11px] italic">
                     All constraint lever inputs match baseline values.
@@ -2007,7 +2052,7 @@ function ProjectsDashboardContent() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
           <div className="w-full max-w-lg rounded-2xl bg-[#faf8f4] border border-[#221f1b]/20 shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between pb-3 border-b border-[#221f1b]/10">
-              <div className="flex items-center gap-2 font-serif text-lg font-bold text-[#221f1b]">
+              <div className="flex items-center gap-2 font-serif text-xl sm:text-2xl font-bold text-[#221f1b]">
                 <Plus className="w-5 h-5 text-[#2c4356]" />
                 <span>Build New Scenario</span>
               </div>
@@ -2132,7 +2177,7 @@ function ProjectsDashboardContent() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
           <div className="w-full max-w-md rounded-2xl bg-[#faf8f4] border border-[#221f1b]/20 shadow-2xl p-6 space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-[#221f1b]/10">
-              <h3 className="font-serif text-base font-bold text-[#221f1b]">Edit Project Tags</h3>
+              <h3 className="font-serif text-lg sm:text-xl font-bold text-[#221f1b]">Edit Project Tags</h3>
               <button
                 type="button"
                 onClick={() => setIsEditTagsOpen(false)}
@@ -2178,7 +2223,7 @@ function ProjectsDashboardContent() {
       {isDeleteProjectOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
           <div className="w-full max-w-md rounded-2xl bg-[#faf8f4] border border-[#221f1b]/20 shadow-2xl p-6 space-y-4">
-            <div className="flex items-center gap-2 font-serif text-base font-bold text-[#b5502f]">
+            <div className="flex items-center gap-2 font-serif text-lg sm:text-xl font-bold text-[#b5502f]">
               <AlertTriangle className="w-5 h-5" />
               <span>Delete Project</span>
             </div>

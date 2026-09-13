@@ -493,7 +493,7 @@ export function ExplanationModal({
                 {data.tag}
               </span>
             </div>
-            <h2 className="font-serif text-xl font-bold tracking-tight text-[#221f1b] pt-1">
+            <h2 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-[#221f1b] pt-1">
               {data.title}
             </h2>
           </div>

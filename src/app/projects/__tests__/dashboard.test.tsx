@@ -127,7 +127,7 @@ describe("ProjectsDashboardPage — Interactive Workable Dashboard", () => {
     const mcBtn = screen.getByRole("button", { name: /run monte carlo/i });
     fireEvent.click(mcBtn);
 
-    expect(screen.getByText(/Sampling 1,000 runs\.\.\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Sampling 2,500 runs\.\.\./i)).toBeInTheDocument();
   });
 
   it("filters scenarios using search input and status tabs", () => {
