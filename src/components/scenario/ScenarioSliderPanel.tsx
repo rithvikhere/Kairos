@@ -22,22 +22,55 @@ export const ScenarioSliderPanel: React.FC<ScenarioSliderPanelProps> = ({
   previewResult,
   isLoading = false,
 }) => {
-  const currentScope = inputs.scope ?? DEFAULT_SCOPE_PERSON_WEEKS;
+  const rawInputs = inputs as any;
+  const budgetVal = inputs.constraints?.budget?.value ?? rawInputs.budget ?? 500000;
+  const headcountVal = inputs.constraints?.headcount?.value ?? rawInputs.headcount ?? 8;
+  const deadlineVal = inputs.constraints?.deadlineWeeks?.value ?? rawInputs.deadlineWeeks ?? 24;
+  const currentScope =
+    inputs.constraints?.scope?.value ?? rawInputs.scope ?? DEFAULT_SCOPE_PERSON_WEEKS;
 
   const handleBudgetChange = (val: number[]) => {
-    onChange({ ...inputs, budget: val[0] ?? inputs.budget });
+    const v = val[0] ?? budgetVal;
+    onChange({
+      ...inputs,
+      constraints: {
+        ...(inputs.constraints || {}),
+        budget: { enabled: true, value: v },
+      },
+    });
   };
 
   const handleHeadcountChange = (val: number[]) => {
-    onChange({ ...inputs, headcount: val[0] ?? inputs.headcount });
+    const v = val[0] ?? headcountVal;
+    onChange({
+      ...inputs,
+      constraints: {
+        ...(inputs.constraints || {}),
+        headcount: { enabled: true, value: v },
+      },
+    });
   };
 
   const handleDeadlineChange = (val: number[]) => {
-    onChange({ ...inputs, deadlineWeeks: val[0] ?? inputs.deadlineWeeks });
+    const v = val[0] ?? deadlineVal;
+    onChange({
+      ...inputs,
+      constraints: {
+        ...(inputs.constraints || {}),
+        deadlineWeeks: { enabled: true, value: v },
+      },
+    });
   };
 
   const handleScopeChange = (val: number[]) => {
-    onChange({ ...inputs, scope: val[0] ?? currentScope });
+    const v = val[0] ?? currentScope;
+    onChange({
+      ...inputs,
+      constraints: {
+        ...(inputs.constraints || {}),
+        scope: { enabled: true, value: v },
+      },
+    });
   };
 
   const riskBand = previewResult
@@ -58,11 +91,11 @@ export const ScenarioSliderPanel: React.FC<ScenarioSliderPanelProps> = ({
           <div className="flex items-center justify-between text-sm">
             <span className="font-semibold text-ink">Budget Available</span>
             <div className="font-mono text-base font-bold text-accent">
-              $<CountUp to={inputs.budget} separator="," duration={0.3} />
+              $<CountUp to={budgetVal} separator="," duration={0.3} />
             </div>
           </div>
           <Slider
-            value={[inputs.budget]}
+            value={[budgetVal]}
             min={20_000}
             max={2_000_000}
             step={10_000}
@@ -79,11 +112,11 @@ export const ScenarioSliderPanel: React.FC<ScenarioSliderPanelProps> = ({
           <div className="flex items-center justify-between text-sm">
             <span className="font-semibold text-ink">Team Headcount</span>
             <div className="font-mono text-base font-bold text-accent">
-              <CountUp to={inputs.headcount} duration={0.3} /> people
+              <CountUp to={headcountVal} duration={0.3} /> people
             </div>
           </div>
           <Slider
-            value={[inputs.headcount]}
+            value={[headcountVal]}
             min={1}
             max={35}
             step={1}
@@ -100,11 +133,11 @@ export const ScenarioSliderPanel: React.FC<ScenarioSliderPanelProps> = ({
           <div className="flex items-center justify-between text-sm">
             <span className="font-semibold text-ink">Target Deadline</span>
             <div className="font-mono text-base font-bold text-accent">
-              <CountUp to={inputs.deadlineWeeks} duration={0.3} /> weeks
+              <CountUp to={deadlineVal} duration={0.3} /> weeks
             </div>
           </div>
           <Slider
-            value={[inputs.deadlineWeeks]}
+            value={[deadlineVal]}
             min={2}
             max={104}
             step={1}
@@ -183,31 +216,31 @@ export const ScenarioSliderPanel: React.FC<ScenarioSliderPanelProps> = ({
                 <div className="flex justify-between">
                   <span className="text-ink/60">Estimated Time:</span>
                   <span className="font-semibold">
-                    {previewResult.estimatedTimeWeeks} weeks
+                    {previewResult.estimatedTimeWeeks ?? previewResult.computed?.estimatedTimeWeeks ?? "—"} weeks
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-ink/60">Effective Headcount:</span>
                   <span className="font-semibold">
-                    {previewResult.effectiveHeadcount.toFixed(1)} people
+                    {(previewResult.effectiveHeadcount ?? previewResult.computed?.effectiveHeadcount)?.toFixed(1) ?? "—"} people
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-ink/60">Actual Cost:</span>
                   <span className="font-semibold">
-                    ${(previewResult.actualCost / 1000).toFixed(0)}k
+                    ${Math.round(((previewResult.actualCost ?? previewResult.computed?.actualCost) || 0) / 1000)}k
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-ink/60">Budget Utilization:</span>
                   <span className="font-semibold">
-                    {(previewResult.budgetUtilization * 100).toFixed(0)}%
+                    {(((previewResult.budgetUtilization ?? previewResult.computed?.budgetUtilization) || 0) * 100).toFixed(0)}%
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-ink/60">Schedule Utilization:</span>
                   <span className="font-semibold">
-                    {(previewResult.scheduleUtilization * 100).toFixed(0)}%
+                    {(((previewResult.scheduleUtilization ?? previewResult.computed?.scheduleUtilization) || 0) * 100).toFixed(0)}%
                   </span>
                 </div>
               </div>

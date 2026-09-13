@@ -25,6 +25,7 @@ import {
   Edit3,
   Bot,
   RefreshCw,
+  Info,
 } from "lucide-react";
 import {
   useProjects,
@@ -48,6 +49,88 @@ import {
   DialogDescription,
   DialogFooter,
 } from "../../components/ui/Dialog.js";
+import {
+  ConstraintCatalogueModal,
+  CONSTRAINT_CATALOGUE,
+} from "../../components/scenario/ConstraintCatalogueModal.js";
+import { ConstraintSummaryStrip } from "../../components/scenario/ConstraintSummaryStrip.js";
+import { RiskCompositionBarChart } from "../../components/scenario/RiskCompositionBarChart.js";
+import { SensitivityTornadoChart } from "../../components/scenario/SensitivityTornadoChart.js";
+import { MonteCarloConvergenceChart } from "../../components/scenario/MonteCarloConvergenceChart.js";
+import { TrialScatterPlot } from "../../components/scenario/TrialScatterPlot.js";
+import { IterationProgressIndicator } from "../../components/scenario/IterationProgressIndicator.js";
+import { ExplanationModal } from "../../components/scenario/ExplanationModal.js";
+import { simulate } from "../../domain/simulation.js";
+import { runMonteCarloSimulation, type MonteCarloResult } from "../../domain/monteCarlo.js";
+import { diffScenarios } from "../../domain/diff.js";
+import type {
+  ConstraintKey,
+  ConstraintSetting,
+  ScenarioInputs,
+  SimulationResult,
+} from "../../domain/types.js";
+
+function createDefaultConstraints(
+  hc: number = 10,
+  dl: number = 14,
+  bg: number = 250000,
+  sc: number = 140
+): Partial<Record<ConstraintKey, ConstraintSetting>> {
+  return {
+    headcount: { enabled: true, value: hc },
+    deadlineWeeks: { enabled: true, value: dl },
+    budget: { enabled: true, value: bg },
+    scope: { enabled: true, value: sc },
+    teamSeniorityMix: { enabled: false, value: 0.4 },
+    attritionRisk: { enabled: false, value: 0.15 },
+    teamFamiliarity: { enabled: false, value: 0.6 },
+    externalDependencyCount: { enabled: false, value: 3 },
+    vendorLeadTimeWeeks: { enabled: false, value: 2 },
+    regulatoryComplexity: { enabled: false, value: 4 },
+    technicalDebtLevel: { enabled: false, value: 3 },
+    scopeVolatility: { enabled: false, value: 15 },
+    distributedTeamOverhead: { enabled: false, value: 1 },
+    qualityRigor: { enabled: false, value: 6 },
+    stakeholderCount: { enabled: false, value: 4 },
+  };
+}
+
+function buildUncertainInputs(
+  constraints: Partial<Record<ConstraintKey, ConstraintSetting>>
+): any {
+  const result: any = { constraints: {} };
+  for (const [key, setting] of Object.entries(constraints)) {
+    if (!setting) continue;
+    if (setting.enabled) {
+      const val = setting.value;
+      let stddev = Math.max(0.1, val * 0.08);
+      if (key === "scope") stddev = Math.max(2, val * 0.12);
+      if (key === "headcount") stddev = Math.max(0.4, val * 0.07);
+      if (key === "budget") stddev = Math.max(2500, val * 0.06);
+      if (key === "deadlineWeeks") stddev = Math.max(0.5, val * 0.05);
+
+      result.constraints[key] = {
+        enabled: true,
+        value: { kind: "normal", mean: val, stddev },
+      };
+    } else {
+      result.constraints[key] = { enabled: false, value: setting.value };
+    }
+  }
+  return result;
+}
+
+function formatDiffValue(key: string, val: number | undefined): string {
+  if (val === undefined || isNaN(val)) return "—";
+  if (key === "budget") return `$${Math.round(val).toLocaleString()}`;
+  if (key === "headcount") return `${val} eng`;
+  if (key === "deadlineWeeks") return `${val} wks`;
+  if (key === "scope") return `${val} pts`;
+  if (key.includes("Rate") || key.includes("Mix") || key.includes("Familiarity")) {
+    return Number(val).toFixed(2);
+  }
+  return String(val);
+}
 
 interface ScenarioState {
   id: string;
@@ -58,6 +141,7 @@ interface ScenarioState {
   deadlineWeeks: number;
   budget: number;
   scope: number;
+  constraints?: Partial<Record<ConstraintKey, ConstraintSetting>>;
   isForked: boolean;
   riskStatus: "Feas" | "Risk" | "Mod";
   isFavorite: boolean;
@@ -284,7 +368,12 @@ function ProjectsDashboardContent() {
   const setArchivedMutation = useSetArchived();
 
   // Local state for default project's scenarios
-  const [defaultScenariosState, setDefaultScenariosState] = useState<ScenarioState[]>(DEFAULT_SCENARIOS);
+  const [defaultScenariosState, setDefaultScenariosState] = useState<ScenarioState[]>(() =>
+    DEFAULT_SCENARIOS.map((sc) => ({
+      ...sc,
+      constraints: createDefaultConstraints(sc.headcount, sc.deadlineWeeks, sc.budget, sc.scope),
+    }))
+  );
 
   // Unified scenarios for active project
   const projectScenarios: ScenarioState[] = useMemo(() => {
@@ -293,11 +382,35 @@ function ProjectsDashboardContent() {
     }
     if (dbScenarios && dbScenarios.length > 0) {
       return dbScenarios.map((s, idx) => {
-        const hc = toNumeric(s.inputs.headcount);
-        const dl = toNumeric(s.inputs.deadlineWeeks);
-        const bg = toNumeric(s.inputs.budget);
-        const sc = toNumeric(s.inputs.scope);
-        const sim = calculateSimulation(hc, dl, bg, sc);
+        const rawInputs = s.inputs as any;
+        const hc = toNumeric(rawInputs.headcount ?? rawInputs.constraints?.headcount?.value) || 8;
+        const dl = toNumeric(rawInputs.deadlineWeeks ?? rawInputs.constraints?.deadlineWeeks?.value) || 16;
+        const bg = toNumeric(rawInputs.budget ?? rawInputs.constraints?.budget?.value) || 250000;
+        const sc = toNumeric(rawInputs.scope ?? rawInputs.constraints?.scope?.value) || 140;
+
+        const constraints: Partial<Record<ConstraintKey, ConstraintSetting>> = {};
+        if (s.inputs.constraints) {
+          for (const [k, v] of Object.entries(s.inputs.constraints)) {
+            if (v) {
+              constraints[k as ConstraintKey] = {
+                enabled: v.enabled,
+                value: toNumeric(v.value),
+              };
+            }
+          }
+        } else {
+          Object.assign(constraints, createDefaultConstraints(hc, dl, bg, sc));
+        }
+
+        let riskStatus: "Feas" | "Risk" | "Mod" = "Feas";
+        try {
+          const sim = simulate({ constraints });
+          riskStatus = sim.riskScore >= 50 ? "Risk" : sim.riskScore >= 25 ? "Mod" : "Feas";
+        } catch {
+          const sim = calculateSimulation(hc, dl, bg, sc);
+          riskStatus = sim.isHigh ? "Risk" : sim.isMod ? "Mod" : "Feas";
+        }
+
         return {
           id: s.id,
           number: idx + 1,
@@ -307,8 +420,9 @@ function ProjectsDashboardContent() {
           deadlineWeeks: dl,
           budget: bg,
           scope: sc,
+          constraints,
           isForked: Boolean(s.parent_scenario_id),
-          riskStatus: sim.isHigh ? "Risk" : sim.isMod ? "Mod" : "Feas",
+          riskStatus,
           isFavorite: Boolean(s.is_favorite),
           isArchived: Boolean(s.is_archived),
           description: s.description,
@@ -335,6 +449,17 @@ function ProjectsDashboardContent() {
   const [budget, setBudget] = useState<number>(250000);
   const [scope, setScope] = useState<number>(140);
 
+  // 15 Uniform Constraints state
+  const [scenarioConstraints, setScenarioConstraints] = useState<
+    Partial<Record<ConstraintKey, ConstraintSetting>>
+  >(() => createDefaultConstraints(10, 14, 250000, 140));
+  const [isConstraintModalOpen, setIsConstraintModalOpen] = useState(false);
+
+  // Monte Carlo & Deep Visualizations state
+  const [mcResult, setMcResult] = useState<MonteCarloResult | null>(null);
+  const [mcActiveTab, setMcActiveTab] = useState<"distribution" | "convergence" | "scatter">("distribution");
+  const [showProgressAnimation, setShowProgressAnimation] = useState(false);
+
   // Sync inputs when active scenario switches
   const handleSelectScenario = (sc: ScenarioState) => {
     setActiveScenarioId(sc.id);
@@ -342,6 +467,16 @@ function ProjectsDashboardContent() {
     setDeadlineWeeks(sc.deadlineWeeks);
     setBudget(sc.budget);
     setScope(sc.scope);
+    const updated = sc.constraints ?? createDefaultConstraints(sc.headcount, sc.deadlineWeeks, sc.budget, sc.scope);
+    setScenarioConstraints(updated);
+  };
+
+  const handleApplyConstraints = (updated: Partial<Record<ConstraintKey, ConstraintSetting>>) => {
+    setScenarioConstraints(updated);
+    if (updated.headcount?.value !== undefined) setHeadcount(updated.headcount.value);
+    if (updated.deadlineWeeks?.value !== undefined) setDeadlineWeeks(updated.deadlineWeeks.value);
+    if (updated.budget?.value !== undefined) setBudget(updated.budget.value);
+    if (updated.scope?.value !== undefined) setScope(updated.scope.value);
   };
 
   // Sync active scenario and sliders only when project changes
@@ -353,13 +488,123 @@ function ProjectsDashboardContent() {
       setDeadlineWeeks(selected.deadlineWeeks);
       setBudget(selected.budget);
       setScope(selected.scope);
+      const updated = selected.constraints ?? createDefaultConstraints(selected.headcount, selected.deadlineWeeks, selected.budget, selected.scope);
+      setScenarioConstraints(updated);
     }
   }, [activeProjectId]);
 
-  // Deterministic calculations
+  // Pure domain simulation results across 15 uniform constraints
+  const simResult = useMemo(() => {
+    try {
+      return simulate({ constraints: scenarioConstraints });
+    } catch (err) {
+      return null;
+    }
+  }, [scenarioConstraints]);
+
+  // Active levers dynamically filtered from 15-constraint catalogue
+  const activeLevers = useMemo(() => {
+    return CONSTRAINT_CATALOGUE.filter((meta) => scenarioConstraints[meta.key]?.enabled === true);
+  }, [scenarioConstraints]);
+
+  const handleUpdateConstraintValue = (key: ConstraintKey, val: number) => {
+    setScenarioConstraints((prev) => ({
+      ...prev,
+      [key]: { enabled: true, value: val },
+    }));
+    if (key === "headcount") setHeadcount(val);
+    if (key === "deadlineWeeks") setDeadlineWeeks(val);
+    if (key === "budget") setBudget(val);
+    if (key === "scope") setScope(val);
+  };
+
+  const handleToggleConstraint = (key: ConstraintKey) => {
+    setScenarioConstraints((prev) => {
+      const current = prev[key];
+      const isEnabled = current?.enabled ?? false;
+      return {
+        ...prev,
+        [key]: {
+          enabled: !isEnabled,
+          value: current?.value ?? 0,
+        },
+      };
+    });
+  };
+
+  // Explanation Modal state for constraints and risk composition
+  const [explanationTopic, setExplanationTopic] = useState<{
+    key: string;
+    type: "constraint" | "risk";
+  } | null>(null);
+
+  const handleOpenExplanation = (key: string, type: "constraint" | "risk") => {
+    setExplanationTopic({ key, type });
+  };
+
+  // Deterministic fallback calculations for UI compatibility
   const simulation = useMemo(() => {
-    return calculateSimulation(headcount, deadlineWeeks, budget, scope);
-  }, [headcount, deadlineWeeks, budget, scope]);
+    const base = calculateSimulation(headcount, deadlineWeeks, budget, scope);
+    if (simResult) {
+      return {
+        ...base,
+        estimatedWeeks: simResult.computed.estimatedTimeWeeks ?? 0,
+        estimatedCost: simResult.computed.actualCost ?? 0,
+        effectiveHc: simResult.computed.effectiveHeadcount ?? 0,
+        riskScore: simResult.riskScore,
+        isHigh: !simResult.feasible,
+        isMod: simResult.riskScore >= 25 && simResult.riskScore < 50,
+        isLow: simResult.riskScore < 25,
+      };
+    }
+    return base;
+  }, [headcount, deadlineWeeks, budget, scope, simResult]);
+
+  // Attribution diff against baseline scenario for comparison and sensitivity
+  const baselineScenario = projectScenarios[0] ?? DEFAULT_SCENARIOS[0];
+  const baselineConstraints = useMemo(() => {
+    return baselineScenario?.constraints ?? createDefaultConstraints(6, 20, 200000, 120);
+  }, [baselineScenario]);
+
+  const baselineSim = useMemo(() => {
+    try {
+      return simulate({ constraints: baselineConstraints });
+    } catch {
+      return null;
+    }
+  }, [baselineConstraints]);
+
+  const liveDiff = useMemo(() => {
+    try {
+      return diffScenarios(
+        { inputs: { constraints: baselineConstraints } },
+        { inputs: { constraints: scenarioConstraints } }
+      );
+    } catch {
+      return null;
+    }
+  }, [baselineConstraints, scenarioConstraints]);
+
+  // Re-run Monte Carlo dynamically when constraints change so scatter plot & distributions update live!
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        const activeCount = Object.values(scenarioConstraints).filter((s) => s?.enabled).length;
+        if (activeCount === 0) return;
+        const uncertain = buildUncertainInputs(scenarioConstraints);
+        const res = runMonteCarloSimulation(uncertain, {
+          iterations: 500,
+          recordCheckpoints: { every: 25 },
+          sampleTrials: { count: 120 },
+        });
+        setMcResult(res);
+        setMcRunCount(500);
+      } catch {
+        // ignore
+      }
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [scenarioConstraints]);
 
   // Scenario tabs and search filter state (from third page)
   const [scenarioTab, setScenarioTab] = useState<"all" | "favorites" | "archived">("all");
@@ -486,20 +731,16 @@ function ProjectsDashboardContent() {
         body: JSON.stringify({
           prompt: nlIntentInput,
           baselineInputs: {
-            budget,
-            headcount,
-            deadlineWeeks,
-            scope,
+            constraints: scenarioConstraints,
           },
         }),
       });
       const data = await res.json();
       if (data.data?.resolvedInputs) {
         setNlExtractedChips(data.data.delta);
-        setHeadcount(data.data.resolvedInputs.headcount);
-        setDeadlineWeeks(data.data.resolvedInputs.deadlineWeeks);
-        setBudget(data.data.resolvedInputs.budget);
-        setScope(data.data.resolvedInputs.scope);
+        if (data.data.resolvedInputs.constraints) {
+          handleApplyConstraints(data.data.resolvedInputs.constraints);
+        }
       }
     } catch (err) {
       console.error("AI intent error:", err);
@@ -520,10 +761,7 @@ function ProjectsDashboardContent() {
           name,
           description: newScenarioDesc.trim() || null,
           inputs: {
-            headcount,
-            deadlineWeeks,
-            budget,
-            scope,
+            constraints: scenarioConstraints,
           },
         });
         setActiveScenarioId(created.id);
@@ -540,8 +778,9 @@ function ProjectsDashboardContent() {
         deadlineWeeks,
         budget,
         scope,
+        constraints: scenarioConstraints,
         isForked: true,
-        riskStatus: simulation.isHigh ? "Risk" : simulation.isMod ? "Mod" : "Feas",
+        riskStatus: simResult ? (simResult.riskScore >= 50 ? "Risk" : simResult.riskScore >= 25 ? "Mod" : "Feas") : "Feas",
         isFavorite: false,
         isArchived: false,
         description: newScenarioDesc.trim() || null,
@@ -592,10 +831,24 @@ function ProjectsDashboardContent() {
   // Trigger Monte Carlo Simulation
   const handleRunMonteCarlo = () => {
     setIsSimulatingMC(true);
+    setShowProgressAnimation(true);
+    try {
+      const res = runMonteCarloSimulation(
+        { constraints: scenarioConstraints },
+        {
+          iterations: 1000,
+          recordCheckpoints: { every: 50 },
+          sampleTrials: { count: 150 },
+        }
+      );
+      setMcResult(res);
+      setMcRunCount(1000);
+    } catch (err) {
+      console.error("Monte Carlo run error:", err);
+    }
     setTimeout(() => {
       setIsSimulatingMC(false);
-      setMcRunCount((prev) => prev + 1000);
-    }, 600);
+    }, 300);
   };
 
   // Dynamic Histogram bar heights and colors based on timeline distribution
@@ -1028,7 +1281,14 @@ function ProjectsDashboardContent() {
               </div>
             </div>
 
-            {/* Top Row: 4 Metric Cards */}
+            {/* Constraint Catalogue Summary Strip */}
+            <ConstraintSummaryStrip
+              constraints={scenarioConstraints}
+              onOpenModal={() => setIsConstraintModalOpen(true)}
+              onExplainConstraint={(key) => handleOpenExplanation(key, "constraint")}
+            />
+
+            {/* Top Row: 4 Metric Cards with Prerequisite Gating */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
               {/* Card 1: Estimated Cost */}
               <div className="p-3.5 rounded-2xl bg-white/90 border border-[#221f1b]/10 shadow-xs space-y-1">
@@ -1036,18 +1296,41 @@ function ProjectsDashboardContent() {
                   <span>$</span>
                   <span>Estimated Cost</span>
                 </div>
-                <div className="text-2xl font-serif font-bold text-[#221f1b] my-0.5">
-                  ${Math.round(simulation.estimatedCost).toLocaleString()}
-                </div>
-                <div
-                  className={`text-[11px] font-sans font-medium ${
-                    simulation.budgetVariancePct > 0 ? "text-[#b5502f]" : "text-[#8ba888]"
-                  }`}
-                >
-                  {simulation.budgetVariancePct > 0
-                    ? `+${simulation.budgetVariancePct.toFixed(1)}% over budget`
-                    : `${Math.abs(simulation.budgetVariancePct).toFixed(1)}% under budget`}
-                </div>
+                {simResult?.computed.actualCost !== undefined ? (
+                  <>
+                    <div className="text-2xl font-serif font-bold text-[#221f1b] my-0.5">
+                      ${Math.round(simResult.computed.actualCost).toLocaleString()}
+                    </div>
+                    {simResult.computed.budgetUtilization !== undefined ? (
+                      (() => {
+                        const bgVal = scenarioConstraints.budget?.value ?? budget;
+                        const variance = ((simResult.computed.actualCost! - bgVal) / bgVal) * 100;
+                        return (
+                          <div
+                            className={`text-[11px] font-sans font-medium ${
+                              variance > 0 ? "text-[#b5502f]" : "text-[#8ba888]"
+                            }`}
+                          >
+                            {variance > 0
+                              ? `+${variance.toFixed(1)}% over budget`
+                              : `${Math.abs(variance).toFixed(1)}% under budget`}
+                          </div>
+                        );
+                      })()
+                    ) : (
+                      <div className="text-[10px] text-[#221f1b]/50 italic">
+                        Budget disabled — variance not evaluated
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="space-y-1 py-1">
+                    <div className="text-xl font-serif font-bold text-[#221f1b]/30">—</div>
+                    <div className="text-[10.5px] text-[#221f1b]/50 italic">
+                      Not evaluated — requires Headcount &amp; Scope
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Card 2: Delivery Time */}
@@ -1056,18 +1339,41 @@ function ProjectsDashboardContent() {
                   <span>🗓</span>
                   <span>Delivery Time</span>
                 </div>
-                <div className="text-2xl font-serif font-bold text-[#221f1b] my-0.5">
-                  {simulation.estimatedWeeks.toFixed(1)} wks
-                </div>
-                <div
-                  className={`text-[11px] font-sans font-medium ${
-                    simulation.scheduleVarianceWeeks > 0 ? "text-[#b5502f]" : "text-[#8ba888]"
-                  }`}
-                >
-                  {simulation.scheduleVarianceWeeks > 0
-                    ? `+${simulation.scheduleVarianceWeeks.toFixed(1)} wks past deadline`
-                    : `${Math.abs(simulation.scheduleVarianceWeeks).toFixed(1)} wks buffer`}
-                </div>
+                {simResult?.computed.estimatedTimeWeeks !== undefined ? (
+                  <>
+                    <div className="text-2xl font-serif font-bold text-[#221f1b] my-0.5">
+                      {simResult.computed.estimatedTimeWeeks.toFixed(1)} wks
+                    </div>
+                    {simResult.computed.scheduleUtilization !== undefined ? (
+                      (() => {
+                        const dlVal = scenarioConstraints.deadlineWeeks?.value ?? deadlineWeeks;
+                        const variance = simResult.computed.estimatedTimeWeeks! - dlVal;
+                        return (
+                          <div
+                            className={`text-[11px] font-sans font-medium ${
+                              variance > 0 ? "text-[#b5502f]" : "text-[#8ba888]"
+                            }`}
+                          >
+                            {variance > 0
+                              ? `+${variance.toFixed(1)} wks past deadline`
+                              : `${Math.abs(variance).toFixed(1)} wks buffer`}
+                          </div>
+                        );
+                      })()
+                    ) : (
+                      <div className="text-[10px] text-[#221f1b]/50 italic">
+                        Deadline disabled — schedule variance not evaluated
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="space-y-1 py-1">
+                    <div className="text-xl font-serif font-bold text-[#221f1b]/30">—</div>
+                    <div className="text-[10.5px] text-[#221f1b]/50 italic">
+                      Not evaluated — requires Headcount &amp; Scope
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Card 3: Effective Headcount */}
@@ -1076,249 +1382,350 @@ function ProjectsDashboardContent() {
                   <span>👥</span>
                   <span>Effective Headcount</span>
                 </div>
-                <div className="text-2xl font-serif font-bold text-[#221f1b] my-0.5">
-                  {simulation.effectiveHc.toFixed(2)} eng
-                </div>
-                <div className="text-[11px] font-sans text-[#b5502f] font-medium">
-                  {simulation.dragPenalty.toFixed(2)} eng drag penalty
-                </div>
+                {simResult?.computed.effectiveHeadcount !== undefined ? (
+                  <>
+                    <div className="text-2xl font-serif font-bold text-[#221f1b] my-0.5">
+                      {simResult.computed.effectiveHeadcount.toFixed(2)} eng
+                    </div>
+                    {(() => {
+                      const hcVal = scenarioConstraints.headcount?.value ?? headcount;
+                      const drag = hcVal - simResult.computed.effectiveHeadcount!;
+                      return (
+                        <div className="text-[11px] font-sans text-[#b5502f] font-medium">
+                          {drag.toFixed(2)} eng drag penalty
+                        </div>
+                      );
+                    })()}
+                  </>
+                ) : (
+                  <div className="space-y-1 py-1">
+                    <div className="text-xl font-serif font-bold text-[#221f1b]/30">—</div>
+                    <div className="text-[10.5px] text-[#221f1b]/50 italic">
+                      Not evaluated — enable Headcount
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Card 4: Risk Score */}
               <div
                 className={`p-3.5 rounded-2xl border shadow-xs space-y-1 ${
-                  simulation.isHigh
+                  !simResult || simResult.activeConstraints.length === 0
+                    ? "bg-white/90 border-[#221f1b]/10"
+                    : !simResult.feasible
                     ? "bg-[#b5502f]/10 border-[#b5502f]/30"
-                    : simulation.isMod
+                    : simResult.riskScore >= 25
                     ? "bg-[#c98a3e]/10 border-[#c98a3e]/30"
                     : "bg-[#8ba888]/10 border-[#8ba888]/30"
                 }`}
               >
-                <div className="flex items-center justify-between text-[11px] font-sans">
-                  <span
-                    className={`font-semibold ${
-                      simulation.isHigh
-                        ? "text-[#b5502f]"
-                        : simulation.isMod
-                        ? "text-[#c98a3e]"
-                        : "text-[#8ba888]"
-                    }`}
-                  >
-                    Risk Score
-                  </span>
-                  <span
-                    className={`px-1.5 py-0.2 rounded text-[9px] font-bold text-white ${
-                      simulation.isHigh
-                        ? "bg-[#b5502f]"
-                        : simulation.isMod
-                        ? "bg-[#c98a3e]"
-                        : "bg-[#8ba888]"
-                    }`}
-                  >
-                    {simulation.isHigh ? "HIGH" : simulation.isMod ? "MOD" : "LOW"}
-                  </span>
+                {simResult && simResult.activeConstraints.length > 0 ? (
+                  <>
+                    <div className="flex items-center justify-between text-[11px] font-sans">
+                      <span
+                        className={`font-semibold ${
+                          !simResult.feasible
+                            ? "text-[#b5502f]"
+                            : simResult.riskScore >= 25
+                            ? "text-[#c98a3e]"
+                            : "text-[#8ba888]"
+                        }`}
+                      >
+                        Risk Score
+                      </span>
+                      <span
+                        className={`px-1.5 py-0.2 rounded text-[9px] font-bold text-white ${
+                          !simResult.feasible
+                            ? "bg-[#b5502f]"
+                            : simResult.riskScore >= 25
+                            ? "bg-[#c98a3e]"
+                            : "bg-[#8ba888]"
+                        }`}
+                      >
+                        {!simResult.feasible ? "HIGH" : simResult.riskScore >= 25 ? "MOD" : "LOW"}
+                      </span>
+                    </div>
+
+                    <div
+                      className={`text-2xl font-serif font-bold my-0.5 ${
+                        !simResult.feasible
+                          ? "text-[#b5502f]"
+                          : simResult.riskScore >= 25
+                          ? "text-[#c98a3e]"
+                          : "text-[#8ba888]"
+                      }`}
+                    >
+                      {simResult.riskScore.toFixed(2)}{" "}
+                      <span className="text-xs font-sans font-normal text-[#221f1b]/60">/ 100</span>
+                    </div>
+
+                    <div
+                      className={`text-[10.5px] font-sans font-medium ${
+                        !simResult.feasible
+                          ? "text-[#b5502f]"
+                          : simResult.riskScore >= 25
+                          ? "text-[#c98a3e]"
+                          : "text-[#8ba888]"
+                      }`}
+                    >
+                      {simResult.feasible ? "Feasible (Threshold < 50)" : "Infeasible (Threshold ≥ 50)"}
+                    </div>
+
+                    {scenarioConstraints.deadlineWeeks?.enabled === false && (
+                      <div className="text-[10px] text-[#c98a3e] font-sans italic pt-0.5">
+                        Schedule Risk not evaluated (enable Deadline)
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="space-y-1 py-1">
+                    <div className="text-xs font-bold text-[#221f1b]/60">Risk Score</div>
+                    <div className="text-xl font-serif font-bold text-[#221f1b]/30">—</div>
+                    <div className="text-[10.5px] text-[#221f1b]/50 italic">
+                      Not evaluated — enable at least 1 constraint
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Risk Composition Bar Chart (Gated to evaluated dimensions) */}
+            {simResult && (
+              <div className="pt-1">
+                <RiskCompositionBarChart
+                  computed={simResult.computed}
+                  riskScore={simResult.riskScore}
+                  onExplainDimension={(key) => handleOpenExplanation(key, "risk")}
+                />
+              </div>
+            )}
+
+            {/* Middle Row: Project Levers Panel & Monte Carlo Uncertainty Panels */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+              {/* Left Panel: Project Levers (Dynamically displays ALL active/enabled constraints) */}
+              <div className="lg:col-span-6 p-4 rounded-2xl bg-white/90 border border-[#221f1b]/10 shadow-xs space-y-3 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between pb-2 border-b border-[#221f1b]/10">
+                    <div className="flex items-center gap-2">
+                      <Sliders className="w-4 h-4 text-[#2c4356]" />
+                      <span className="text-xs font-bold text-[#221f1b]">
+                        Project Levers ({activeLevers.length} active)
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsConstraintModalOpen(true)}
+                      className="text-[10px] text-[#2c4356] font-mono font-medium hover:underline flex items-center gap-1"
+                    >
+                      <span>Configure All 15</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  </div>
+
+                  {activeLevers.length === 0 ? (
+                    <div className="p-8 rounded-xl bg-[#faf8f4] border border-dashed border-[#221f1b]/15 text-center text-xs text-[#221f1b]/60 space-y-3 my-4">
+                      <p>No active constraint levers enabled for this scenario.</p>
+                      <button
+                        type="button"
+                        onClick={() => setIsConstraintModalOpen(true)}
+                        className="px-3 py-1.5 rounded-lg bg-[#2c4356] text-white font-medium text-xs hover:bg-[#1d2e3b] transition-colors"
+                      >
+                        + Enable Constraints
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 pt-2 max-h-[440px] overflow-y-auto pr-1">
+                      {activeLevers.map((meta) => {
+                        const currentVal = scenarioConstraints[meta.key]?.value ?? meta.defaultValue;
+                        const displayVal =
+                          meta.key === "budget"
+                            ? `$${Math.round(currentVal).toLocaleString()}`
+                            : meta.key === "headcount"
+                            ? `${currentVal} engineers`
+                            : meta.key === "deadlineWeeks"
+                            ? `${currentVal} weeks`
+                            : meta.key === "scope"
+                            ? `${currentVal} story points`
+                            : meta.unit.includes("ratio") || meta.unit.includes("rate")
+                            ? Number(currentVal).toFixed(2)
+                            : meta.unit.includes("%")
+                            ? `${currentVal}%`
+                            : `${currentVal} ${meta.unit.split(" ")[0]}`;
+
+                        return (
+                          <div
+                            key={meta.key}
+                            className="space-y-1.5 p-2.5 rounded-xl bg-white/80 border border-[#221f1b]/10 shadow-2xs"
+                          >
+                            <div className="flex justify-between items-center text-xs font-sans">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[#221f1b] font-medium">{meta.label}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenExplanation(meta.key, "constraint")}
+                                  className="text-[#221f1b]/40 hover:text-[#2c4356] transition-colors p-0.5"
+                                  title={`Explain what ${meta.label} does`}
+                                >
+                                  <Info className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono font-bold text-[#2c4356] text-xs">
+                                  {displayVal}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleConstraint(meta.key)}
+                                  className="text-[#221f1b]/30 hover:text-[#b5502f] transition-colors p-0.5 rounded hover:bg-[#ede9e0]"
+                                  title={`Disable and remove ${meta.label} from levers`}
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+
+                            <input
+                              type="range"
+                              min={meta.min}
+                              max={meta.max}
+                              step={meta.step}
+                              value={currentVal}
+                              onChange={(e) =>
+                                handleUpdateConstraintValue(meta.key, Number(e.target.value))
+                              }
+                              className="w-full accent-[#2c4356] cursor-pointer h-1.5 bg-[#e8e3d8] rounded-lg"
+                            />
+
+                            <div className="flex justify-between text-[10px] text-[#221f1b]/40 font-mono">
+                              <span>
+                                {meta.min} {meta.unit.split(" ")[0]}
+                              </span>
+                              <span>
+                                {meta.max} {meta.unit.split(" ")[0]}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
-                <div
-                  className={`text-2xl font-serif font-bold my-0.5 ${
-                    simulation.isHigh
-                      ? "text-[#b5502f]"
-                      : simulation.isMod
-                      ? "text-[#c98a3e]"
-                      : "text-[#8ba888]"
-                  }`}
-                >
-                  {simulation.riskScore}{" "}
-                  <span className="text-xs font-sans font-normal text-[#221f1b]/60">/ 100</span>
+                <div className="pt-2 border-t border-[#221f1b]/10 flex items-center justify-between text-[11px] text-[#221f1b]/50">
+                  <span>Toggle or add levers anytime via catalogue</span>
+                  <button
+                    type="button"
+                    onClick={() => setIsConstraintModalOpen(true)}
+                    className="text-[#2c4356] font-semibold hover:underline"
+                  >
+                    + Add More Levers
+                  </button>
+                </div>
+              </div>
+
+              {/* Right Panel: Monte Carlo Uncertainty Distribution & Scatter Plot displayed simultaneously */}
+              <div className="lg:col-span-6 space-y-4">
+                {/* 1. Monte Carlo Distribution Card */}
+                <div className="p-4 rounded-2xl bg-white/90 border border-[#221f1b]/10 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-[#221f1b]/10">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-[#2c4356]" />
+                      <span className="text-xs font-bold text-[#221f1b]">
+                        Monte Carlo Distribution ({mcRunCount.toLocaleString()} Runs)
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-[#221f1b]/50 font-mono">
+                      Timeline Uncertainty
+                    </span>
+                  </div>
+
+                  {showProgressAnimation && (
+                    <div className="py-1">
+                      <IterationProgressIndicator
+                        totalIterations={mcRunCount}
+                        isComplete={!isSimulatingMC}
+                        onAnimationComplete={() => setShowProgressAnimation(false)}
+                      />
+                    </div>
+                  )}
+
+                  {/* Histogram */}
+                  <div className="h-24 w-full flex items-end justify-between gap-1.5 px-2 pt-3 pb-1 bg-[#faf8f4] rounded-xl border border-[#221f1b]/5">
+                    {histogramBars.map((bar, idx) => (
+                      <div
+                        key={idx}
+                        className="flex-1 rounded-t transition-all duration-300 relative group"
+                        style={{
+                          height: `${bar.height}%`,
+                          backgroundColor: bar.color,
+                          opacity: 0.88,
+                        }}
+                      >
+                        <div className="absolute -top-7 left-1/2 -translate-x-1/2 px-1.5 py-0.5 bg-[#221f1b] text-white text-[9px] rounded font-mono opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                          {bar.height}%
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Probability Metric Cards */}
+                  <div className="grid grid-cols-2 gap-2.5 pt-1 text-xs font-sans">
+                    <div className="p-2.5 rounded-xl bg-[#f6f4ef] border border-[#221f1b]/5">
+                      <div className="text-[10px] text-[#221f1b]/60">Probability On-Time</div>
+                      <div
+                        className={`font-mono font-bold text-base mt-0.5 ${
+                          (mcResult ? mcResult.probabilityOnTime * 100 : simulation.probOnTime) >= 70
+                            ? "text-[#8ba888]"
+                            : (mcResult ? mcResult.probabilityOnTime * 100 : simulation.probOnTime) >= 40
+                            ? "text-[#c98a3e]"
+                            : "text-[#b5502f]"
+                        }`}
+                      >
+                        {(mcResult ? mcResult.probabilityOnTime * 100 : simulation.probOnTime).toFixed(1)}%
+                      </div>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-[#f6f4ef] border border-[#221f1b]/5">
+                      <div className="text-[10px] text-[#221f1b]/60">Within Budget</div>
+                      <div
+                        className={`font-mono font-bold text-base mt-0.5 ${
+                          (mcResult ? mcResult.probabilityWithinBudget * 100 : simulation.probWithinBudget) >= 70
+                            ? "text-[#8ba888]"
+                            : (mcResult ? mcResult.probabilityWithinBudget * 100 : simulation.probWithinBudget) >= 40
+                            ? "text-[#c98a3e]"
+                            : "text-[#b5502f]"
+                        }`}
+                      >
+                        {(mcResult ? mcResult.probabilityWithinBudget * 100 : simulation.probWithinBudget).toFixed(1)}%
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <div
-                  className={`text-[10.5px] font-sans font-medium ${
-                    simulation.isHigh
-                      ? "text-[#b5502f]"
-                      : simulation.isMod
-                      ? "text-[#c98a3e]"
-                      : "text-[#8ba888]"
-                  }`}
-                >
-                  {simulation.isHigh
-                    ? "Infeasible (Threshold ≥ 50)"
-                    : "Feasible (Threshold < 50)"}
+                {/* 2. Trial Scatter Plot Card */}
+                <div className="rounded-2xl overflow-hidden shadow-xs">
+                  <TrialScatterPlot trialSample={mcResult?.trialSample} />
                 </div>
               </div>
             </div>
 
-            {/* Middle Row: Project Levers Panel & Monte Carlo Panel */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-              {/* Left Panel: Project Levers */}
-              <div className="lg:col-span-6 p-4 rounded-2xl bg-white/90 border border-[#221f1b]/10 shadow-xs space-y-4">
-                <div className="flex items-center justify-between pb-2 border-b border-[#221f1b]/10">
-                  <div className="flex items-center gap-2">
-                    <Sliders className="w-4 h-4 text-[#2c4356]" />
-                    <span className="text-xs font-bold text-[#221f1b]">Project Levers</span>
-                  </div>
-                  <span className="text-[10px] text-[#2c4356] font-mono font-medium">
-                    Live Inputs
+            {/* Down Below: Dedicated Large Standalone Monte Carlo Convergence Tracker */}
+            <div className="p-5 rounded-2xl bg-white/90 border border-[#221f1b]/10 shadow-xs space-y-2">
+              <div className="flex items-center justify-between pb-2 border-b border-[#221f1b]/10">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-[#2c4356]" />
+                  <span className="text-sm font-bold text-[#221f1b] font-serif">
+                    Monte Carlo Convergence Analysis
                   </span>
                 </div>
-
-                {/* Slider 1: Headcount */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-xs font-sans">
-                    <span className="text-[#221f1b]/70 font-medium">Headcount</span>
-                    <span className="font-mono font-bold text-[#221f1b]">
-                      {headcount} engineers
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={2}
-                    max={24}
-                    value={headcount}
-                    onChange={(e) => setHeadcount(Number(e.target.value))}
-                    className="w-full accent-[#2c4356] cursor-pointer h-1.5 bg-[#e8e3d8] rounded-lg"
-                  />
-                  <div className="flex justify-between text-[10px] text-[#221f1b]/40 font-mono">
-                    <span>2 eng</span>
-                    <span>24 eng</span>
-                  </div>
-                </div>
-
-                {/* Slider 2: Deadline */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-xs font-sans">
-                    <span className="text-[#221f1b]/70 font-medium">Deadline</span>
-                    <span className="font-mono font-bold text-[#221f1b]">
-                      {deadlineWeeks} weeks
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={6}
-                    max={32}
-                    value={deadlineWeeks}
-                    onChange={(e) => setDeadlineWeeks(Number(e.target.value))}
-                    className="w-full accent-[#2c4356] cursor-pointer h-1.5 bg-[#e8e3d8] rounded-lg"
-                  />
-                  <div className="flex justify-between text-[10px] text-[#221f1b]/40 font-mono">
-                    <span>6 wks</span>
-                    <span>32 wks</span>
-                  </div>
-                </div>
-
-                {/* Slider 3: Budget */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-xs font-sans">
-                    <span className="text-[#221f1b]/70 font-medium">Budget</span>
-                    <span className="font-mono font-bold text-[#221f1b]">
-                      ${budget.toLocaleString()}
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={50000}
-                    max={600000}
-                    step={10000}
-                    value={budget}
-                    onChange={(e) => setBudget(Number(e.target.value))}
-                    className="w-full accent-[#2c4356] cursor-pointer h-1.5 bg-[#e8e3d8] rounded-lg"
-                  />
-                  <div className="flex justify-between text-[10px] text-[#221f1b]/40 font-mono">
-                    <span>$50,000</span>
-                    <span>$600,000</span>
-                  </div>
-                </div>
-
-                {/* Slider 4: Scope Estimate */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-xs font-sans">
-                    <span className="text-[#221f1b]/70 font-medium">Scope Estimate</span>
-                    <span className="font-mono font-bold text-[#221f1b]">
-                      {scope} story points
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={50}
-                    max={250}
-                    step={5}
-                    value={scope}
-                    onChange={(e) => setScope(Number(e.target.value))}
-                    className="w-full accent-[#2c4356] cursor-pointer h-1.5 bg-[#e8e3d8] rounded-lg"
-                  />
-                  <div className="flex justify-between text-[10px] text-[#221f1b]/40 font-mono">
-                    <span>50 pts</span>
-                    <span>250 pts</span>
-                  </div>
-                </div>
+                <span className="text-xs text-[#221f1b]/50 font-mono">
+                  Running-Mean Steady-State Trajectory
+                </span>
               </div>
-
-              {/* Right Panel: Monte Carlo Simulation */}
-              <div className="lg:col-span-6 p-4 rounded-2xl bg-white/90 border border-[#221f1b]/10 shadow-xs flex flex-col justify-between space-y-3">
-                <div className="flex items-center justify-between pb-2 border-b border-[#221f1b]/10">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-[#2c4356]" />
-                    <span className="text-xs font-bold text-[#221f1b]">
-                      Monte Carlo ({mcRunCount.toLocaleString()} Iterations)
-                    </span>
-                  </div>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#8ba888]/20 text-[#221f1b] font-mono font-medium">
-                    N={mcRunCount}
-                  </span>
-                </div>
-
-                {/* Histogram Visual representation */}
-                <div className="h-28 w-full flex items-end justify-between gap-1.5 px-2 pt-4 pb-1 bg-[#faf8f4] rounded-xl border border-[#221f1b]/5">
-                  {histogramBars.map((bar, idx) => (
-                    <div
-                      key={idx}
-                      className="flex-1 rounded-t transition-all duration-300 relative group"
-                      style={{
-                        height: `${bar.height}%`,
-                        backgroundColor: bar.color,
-                        opacity: 0.88,
-                      }}
-                    >
-                      <div className="absolute -top-7 left-1/2 -translate-x-1/2 px-1.5 py-0.5 bg-[#221f1b] text-white text-[9px] rounded font-mono opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-                        {bar.height}%
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Probability Metric Cards */}
-                <div className="grid grid-cols-2 gap-2.5 pt-1 text-xs font-sans">
-                  <div className="p-2.5 rounded-xl bg-[#f6f4ef] border border-[#221f1b]/5">
-                    <div className="text-[10px] text-[#221f1b]/60">Probability On-Time</div>
-                    <div
-                      className={`font-mono font-bold text-base mt-0.5 ${
-                        simulation.probOnTime >= 70
-                          ? "text-[#8ba888]"
-                          : simulation.probOnTime >= 40
-                          ? "text-[#c98a3e]"
-                          : "text-[#b5502f]"
-                      }`}
-                    >
-                      {simulation.probOnTime.toFixed(1)}%
-                    </div>
-                  </div>
-
-                  <div className="p-2.5 rounded-xl bg-[#f6f4ef] border border-[#221f1b]/5">
-                    <div className="text-[10px] text-[#221f1b]/60">Within Budget</div>
-                    <div
-                      className={`font-mono font-bold text-base mt-0.5 ${
-                        simulation.probWithinBudget >= 70
-                          ? "text-[#8ba888]"
-                          : simulation.probWithinBudget >= 40
-                          ? "text-[#c98a3e]"
-                          : "text-[#b5502f]"
-                      }`}
-                    >
-                      {simulation.probWithinBudget.toFixed(1)}%
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <MonteCarloConvergenceChart
+                convergence={mcResult?.convergence}
+                metricLabel="Running Mean Project Cost ($)"
+              />
             </div>
 
             {/* Bottom Card: Bounded AI Scenario Attribution */}
@@ -1390,35 +1797,87 @@ function ProjectsDashboardContent() {
             <div className="space-y-4 font-sans text-xs">
               <div className="grid grid-cols-3 gap-3 p-3 rounded-xl bg-[#ede9e0]/60 font-mono text-[11px] text-[#221f1b]/70">
                 <div>Parameter</div>
-                <div className="font-bold text-[#221f1b]">Baseline Scope</div>
-                <div className="font-bold text-[#221f1b]">Accelerated Q3</div>
+                <div className="font-bold text-[#221f1b]">{baselineScenario?.name ?? "Baseline Plan"}</div>
+                <div className="font-bold text-[#2c4356]">{activeScenario.name} (Live Edits)</div>
               </div>
 
-              <div className="divide-y divide-[#221f1b]/10">
-                <div className="grid grid-cols-3 gap-3 py-2.5 px-3">
-                  <span className="text-[#221f1b]/60">Headcount</span>
-                  <span>6 engineers</span>
-                  <span className="font-bold text-[#b5502f]">10 engineers (+4)</span>
+              <div className="divide-y divide-[#221f1b]/10 max-h-[260px] overflow-y-auto">
+                {/* Dynamically render all changed or active parameters */}
+                {liveDiff?.inputDiff && Object.keys(liveDiff.inputDiff).length > 0 ? (
+                  Object.entries(liveDiff.inputDiff).map(([key, delta]) => {
+                    if (!delta) return null;
+                    const meta = CONSTRAINT_CATALOGUE.find((c) => c.key === key);
+                    const label = meta?.label ?? key;
+                    return (
+                      <div key={key} className="grid grid-cols-3 gap-3 py-2 px-3 items-center">
+                        <span className="text-[#221f1b]/70 font-medium">{label}</span>
+                        <span className="font-mono text-[#221f1b]/80">
+                          {formatDiffValue(key, delta.from)}
+                        </span>
+                        <span className="font-mono font-bold text-[#2c4356] flex items-center gap-1">
+                          {formatDiffValue(key, delta.to)}
+                          {delta.delta !== 0 && (
+                            <span
+                              className={`text-[10px] font-normal ${
+                                delta.direction === "increased" ? "text-[#b5502f]" : "text-[#2b5336]"
+                              }`}
+                            >
+                              ({delta.delta > 0 ? `+${delta.delta}` : delta.delta})
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="py-2.5 px-3 text-center text-ink/50 text-[11px] italic">
+                    All constraint lever inputs match baseline values.
+                  </div>
+                )}
+
+                {/* Core Output Metrics Comparison */}
+                <div className="grid grid-cols-3 gap-3 py-2 px-3 items-center bg-[#ede9e0]/30 font-medium">
+                  <span className="text-[#221f1b]">Estimated Cost</span>
+                  <span className="font-mono">
+                    {baselineSim?.computed.actualCost !== undefined
+                      ? `$${Math.round(baselineSim.computed.actualCost).toLocaleString()}`
+                      : "$200,000"}
+                  </span>
+                  <span className="font-mono font-bold text-[#2c4356]">
+                    {simResult?.computed.actualCost !== undefined
+                      ? `$${Math.round(simResult.computed.actualCost).toLocaleString()}`
+                      : "Not evaluated"}
+                  </span>
                 </div>
-                <div className="grid grid-cols-3 gap-3 py-2.5 px-3">
-                  <span className="text-[#221f1b]/60">Target Deadline</span>
-                  <span>20 weeks</span>
-                  <span className="font-bold text-[#b5502f]">14 weeks (-6)</span>
+
+                <div className="grid grid-cols-3 gap-3 py-2 px-3 items-center">
+                  <span className="text-[#221f1b]">Delivery Duration</span>
+                  <span className="font-mono">
+                    {baselineSim?.computed.estimatedTimeWeeks !== undefined
+                      ? `${baselineSim.computed.estimatedTimeWeeks.toFixed(1)} wks`
+                      : "19.8 wks"}
+                  </span>
+                  <span className="font-mono font-bold text-[#2c4356]">
+                    {simResult?.computed.estimatedTimeWeeks !== undefined
+                      ? `${simResult.computed.estimatedTimeWeeks.toFixed(1)} wks`
+                      : "Not evaluated"}
+                  </span>
                 </div>
-                <div className="grid grid-cols-3 gap-3 py-2.5 px-3">
-                  <span className="text-[#221f1b]/60">Estimated Cost</span>
-                  <span>$200,000</span>
-                  <span className="font-bold text-[#b5502f]">$288,400 (+$88,400)</span>
-                </div>
-                <div className="grid grid-cols-3 gap-3 py-2.5 px-3">
-                  <span className="text-[#221f1b]/60">Brooks Drag</span>
-                  <span>0.78 eng penalty</span>
-                  <span className="font-bold text-[#b5502f]">2.59 eng penalty</span>
-                </div>
-                <div className="grid grid-cols-3 gap-3 py-2.5 px-3">
-                  <span className="text-[#221f1b]/60">Risk Score</span>
-                  <span className="text-[#8ba888] font-bold">24 (Feasible)</span>
-                  <span className="text-[#b5502f] font-bold">68 (Infeasible)</span>
+
+                <div className="grid grid-cols-3 gap-3 py-2 px-3 items-center bg-[#ede9e0]/30 font-medium">
+                  <span className="text-[#221f1b]">Risk Score</span>
+                  <span className="font-mono text-[#2b5336] font-bold">
+                    {baselineSim ? `${baselineSim.riskScore.toFixed(2)} (${baselineSim.feasible ? "Feasible" : "Infeasible"})` : "24.00 (Feasible)"}
+                  </span>
+                  <span
+                    className={`font-mono font-bold ${
+                      simResult?.feasible ? "text-[#2b5336]" : "text-[#b5502f]"
+                    }`}
+                  >
+                    {simResult
+                      ? `${simResult.riskScore.toFixed(2)} (${simResult.feasible ? "Feasible" : "Infeasible"})`
+                      : "—"}
+                  </span>
                 </div>
               </div>
 
@@ -1429,9 +1888,33 @@ function ProjectsDashboardContent() {
                   <span>Primary Isolated Risk Driver</span>
                 </div>
                 <p className="text-[#221f1b]/80">
-                  Compressed deadline (-6 wks) and communication drag from 4 added engineers account for 82% of the feasibility degradation.
+                  {liveDiff?.attribution && liveDiff.attribution.length > 0 ? (
+                    (() => {
+                      const top = liveDiff.attribution[0]!;
+                      const meta = CONSTRAINT_CATALOGUE.find((c) => c.key === top.field);
+                      const label = meta?.label ?? top.field;
+                      const sign = top.isolatedRiskContribution > 0 ? "+" : "";
+                      return `Isolated sensitivity analysis shows that changing ${label} drove ${sign}${top.isolatedRiskContribution.toFixed(1)} points of risk shift.`;
+                    })()
+                  ) : (
+                    "No isolated risk driver identified — scenario parameters match baseline."
+                  )}
                 </p>
               </div>
+              {/* Sensitivity Tornado Chart */}
+              {liveDiff && liveDiff.attribution.length > 0 && (
+                <div className="pt-3 border-t border-[#221f1b]/10 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-xs text-[#221f1b]">
+                      Sensitivity Tornado Analysis (|Δ Risk Score| per Lever)
+                    </span>
+                    <span className="text-[10px] text-[#221f1b]/50 font-mono">
+                      Active changed constraints
+                    </span>
+                  </div>
+                  <SensitivityTornadoChart attribution={liveDiff.attribution} />
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end pt-2 border-t border-[#221f1b]/10">
@@ -1446,6 +1929,22 @@ function ProjectsDashboardContent() {
           </div>
         </div>
       )}
+
+      {/* Constraint Catalogue Selection Modal */}
+      <ConstraintCatalogueModal
+        isOpen={isConstraintModalOpen}
+        onClose={() => setIsConstraintModalOpen(false)}
+        currentConstraints={scenarioConstraints}
+        onApply={handleApplyConstraints}
+      />
+
+      {/* Explanation Dialog with Blurred Background */}
+      <ExplanationModal
+        isOpen={explanationTopic !== null}
+        onClose={() => setExplanationTopic(null)}
+        topicKey={explanationTopic?.key ?? null}
+        topicType={explanationTopic?.type ?? null}
+      />
 
       {/* Save / Build New Scenario Modal */}
       {isNewScenarioOpen && (

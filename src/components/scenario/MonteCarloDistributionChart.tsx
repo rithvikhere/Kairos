@@ -98,22 +98,22 @@ export const MonteCarloDistributionChart: React.FC<MonteCarloDistributionChartPr
       {/* Probability Summary KPI Badges */}
       <div className="grid grid-cols-3 gap-3">
         <div className="p-3 rounded-xl border border-neutral bg-[#f5f2ec] text-center">
-          <div className="text-[11px] font-semibold text-ink/50 uppercase">Feasible Rate</div>
-          <div className="font-serif text-xl font-bold text-[#2a4225]">
+          <div className="text-[11px] font-semibold text-ink/70 uppercase tracking-wider">Feasible Rate</div>
+          <div className="font-serif text-xl font-bold text-[#1f2421] mt-1">
             {(monteCarlo.feasibleRate * 100).toFixed(0)}%
           </div>
         </div>
 
         <div className="p-3 rounded-xl border border-neutral bg-[#f5f2ec] text-center">
-          <div className="text-[11px] font-semibold text-ink/50 uppercase">On-Time Prob</div>
-          <div className="font-serif text-xl font-bold text-accent">
+          <div className="text-[11px] font-semibold text-ink/70 uppercase tracking-wider">On-Time Prob</div>
+          <div className="font-serif text-xl font-bold text-[#234e63] mt-1">
             {(monteCarlo.probabilityOnTime * 100).toFixed(0)}%
           </div>
         </div>
 
         <div className="p-3 rounded-xl border border-neutral bg-[#f5f2ec] text-center">
-          <div className="text-[11px] font-semibold text-ink/50 uppercase">Within Budget Prob</div>
-          <div className="font-serif text-xl font-bold text-accent">
+          <div className="text-[11px] font-semibold text-ink/70 uppercase tracking-wider">Within Budget Prob</div>
+          <div className="font-serif text-xl font-bold text-[#234e63] mt-1">
             {(monteCarlo.probabilityWithinBudget * 100).toFixed(0)}%
           </div>
         </div>

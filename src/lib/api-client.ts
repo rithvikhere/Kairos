@@ -203,7 +203,13 @@ export async function simulatePreview(
 
 export async function simulateMonteCarlo(
   inputs: UncertainScenarioInputs,
-  options?: { iterations?: number; seed?: number; bucketCount?: number }
+  options?: {
+    iterations?: number;
+    seed?: number;
+    bucketCount?: number;
+    recordCheckpoints?: { every: number };
+    sampleTrials?: { count: number };
+  }
 ): Promise<MonteCarloResult> {
   return request<MonteCarloResult>("/api/simulate/monte-carlo", {
     method: "POST",

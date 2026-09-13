@@ -1,5 +1,6 @@
-import type { ScenarioInputs } from "../domain/types.js";
 import { DEFAULT_SCOPE_PERSON_WEEKS } from "../domain/constants.js";
+import { normalizeScenarioInputs } from "../domain/simulation.js";
+import type { ConstraintKey, ConstraintSetting, ScenarioInputs } from "../domain/types.js";
 import type { DeltaSpec, ScenarioIntentDelta } from "./types.js";
 
 function applyFieldDelta(baseValue: number, spec: DeltaSpec): number {
@@ -14,33 +15,63 @@ function applyFieldDelta(baseValue: number, spec: DeltaSpec): number {
 }
 
 /**
- * Pure function that applies a structured delta specification onto baseline scenario inputs.
+ * Pure function that applies a structured delta specification onto baseline scenario constraints.
  *
- * Does NOT validate business rules (e.g. non-positive values) — downstream simulation
- * will handle validation via InvalidScenarioError.
+ * Supports both uniform constraint inputs and legacy flat scenario inputs.
  */
 export function applyIntentDelta(
-  baseline: ScenarioInputs,
+  baseline: ScenarioInputs | any,
   delta: ScenarioIntentDelta
-): ScenarioInputs {
-  const result: ScenarioInputs = { ...baseline };
-
-  if (delta.budget !== undefined) {
-    result.budget = applyFieldDelta(baseline.budget, delta.budget);
+): any {
+  if (!baseline) {
+    return { constraints: {} };
   }
 
-  if (delta.headcount !== undefined) {
-    result.headcount = applyFieldDelta(baseline.headcount, delta.headcount);
+  // Handle legacy flat ScenarioInputs (e.g. Phase 6 test fixtures)
+  if (!baseline.constraints && (baseline.budget !== undefined || baseline.headcount !== undefined)) {
+    const res: any = { ...baseline };
+    for (const [key, spec] of Object.entries(delta)) {
+      if (!spec) continue;
+      const baseVal =
+        baseline[key] ?? (key === "scope" ? DEFAULT_SCOPE_PERSON_WEEKS : 0);
+      res[key] = applyFieldDelta(baseVal, spec as DeltaSpec);
+    }
+    return res;
   }
 
-  if (delta.deadlineWeeks !== undefined) {
-    result.deadlineWeeks = applyFieldDelta(baseline.deadlineWeeks, delta.deadlineWeeks);
+  // Uniform 15-constraint inputs
+  const newConstraints: Partial<Record<ConstraintKey, ConstraintSetting>> = {};
+
+  if (baseline && baseline.constraints) {
+    for (const [k, setting] of Object.entries(baseline.constraints)) {
+      if (setting) {
+        newConstraints[k as ConstraintKey] = { ...(setting as any) };
+      }
+    }
   }
 
-  if (delta.scope !== undefined) {
-    const baseScope = baseline.scope ?? DEFAULT_SCOPE_PERSON_WEEKS;
-    result.scope = applyFieldDelta(baseScope, delta.scope);
+  for (const [key, spec] of Object.entries(delta) as Array<[ConstraintKey, DeltaSpec]>) {
+    if (!spec) continue;
+
+    const existing = newConstraints[key];
+    const baseVal = existing
+      ? existing.value
+      : key === "scope"
+      ? DEFAULT_SCOPE_PERSON_WEEKS
+      : 0;
+    const updatedVal = applyFieldDelta(baseVal, spec);
+
+    newConstraints[key] = {
+      enabled: true,
+      value: updatedVal,
+    };
   }
+
+  const result: any = { constraints: newConstraints };
+  if (newConstraints.budget?.enabled) result.budget = newConstraints.budget.value;
+  if (newConstraints.headcount?.enabled) result.headcount = newConstraints.headcount.value;
+  if (newConstraints.deadlineWeeks?.enabled) result.deadlineWeeks = newConstraints.deadlineWeeks.value;
+  if (newConstraints.scope?.enabled) result.scope = newConstraints.scope.value;
 
   return result;
 }

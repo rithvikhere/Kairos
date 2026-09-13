@@ -1,95 +1,80 @@
-import type { ScenarioInputs } from "../domain/types.js";
+import type { ConstraintKey, ScenarioInputs } from "../domain/types.js";
 import type { ScenarioDiff } from "../domain/diff.js";
 
+const DELTA_PROPERTY_SCHEMA = {
+  type: ["object", "null"],
+  properties: {
+    type: {
+      type: "string",
+      enum: ["absolute", "percent", "delta"],
+      description:
+        "absolute replaces value, percent scales baseline by (1 + value/100), delta adds value directly",
+    },
+    value: {
+      type: "number",
+      description: "Numeric delta value (e.g. -20 for 20% cut, 50000 for $50k increase)",
+    },
+  },
+  required: ["type", "value"],
+  additionalProperties: false,
+};
+
+export const ALL_15_CONSTRAINT_KEYS: ConstraintKey[] = [
+  "headcount",
+  "budget",
+  "deadlineWeeks",
+  "scope",
+  "teamSeniorityMix",
+  "attritionRisk",
+  "externalDependencyCount",
+  "technicalDebtLevel",
+  "scopeVolatility",
+  "distributedTeamOverhead",
+  "vendorLeadTimeWeeks",
+  "regulatoryComplexity",
+  "qualityRigor",
+  "stakeholderCount",
+  "teamFamiliarity",
+];
+
 /**
- * JSON Schema for Structured Outputs (OpenAI / Anthropic tool use).
+ * JSON Schema for Structured Outputs (OpenAI / Anthropic tool use) across all 15 constraints.
  */
 export const SCENARIO_INTENT_DELTA_SCHEMA = {
   type: "object",
-  properties: {
-    budget: {
-      type: ["object", "null"],
-      description: "Modification to total budget",
-      properties: {
-        type: {
-          type: "string",
-          enum: ["absolute", "percent", "delta"],
-          description: "absolute replaces value, percent scales baseline by (1 + value/100), delta adds value directly",
-        },
-        value: {
-          type: "number",
-          description: "Numeric delta value (e.g. -20 for 20% cut, 50000 for $50k increase)",
-        },
-      },
-      required: ["type", "value"],
-      additionalProperties: false,
-    },
-    headcount: {
-      type: ["object", "null"],
-      description: "Modification to team headcount",
-      properties: {
-        type: {
-          type: "string",
-          enum: ["absolute", "percent", "delta"],
-        },
-        value: {
-          type: "number",
-        },
-      },
-      required: ["type", "value"],
-      additionalProperties: false,
-    },
-    deadlineWeeks: {
-      type: ["object", "null"],
-      description: "Modification to timeline/deadline in weeks",
-      properties: {
-        type: {
-          type: "string",
-          enum: ["absolute", "percent", "delta"],
-        },
-        value: {
-          type: "number",
-        },
-      },
-      required: ["type", "value"],
-      additionalProperties: false,
-    },
-    scope: {
-      type: ["object", "null"],
-      description: "Modification to project scope in person-weeks",
-      properties: {
-        type: {
-          type: "string",
-          enum: ["absolute", "percent", "delta"],
-        },
-        value: {
-          type: "number",
-        },
-      },
-      required: ["type", "value"],
-      additionalProperties: false,
-    },
-  },
-  required: ["budget", "headcount", "deadlineWeeks", "scope"],
+  properties: Object.fromEntries(
+    ALL_15_CONSTRAINT_KEYS.map((k) => [k, DELTA_PROPERTY_SCHEMA])
+  ),
   additionalProperties: false,
 };
 
 export const INTENT_PARSING_SYSTEM_PROMPT = `You are a precision natural-language parser for project scenario parameters.
 Extract the user's intended modifications to baseline scenario inputs.
 
-SUPPORTED FIELDS:
-- budget (total dollars)
-- headcount (number of team members)
-- deadlineWeeks (project duration / deadline in weeks)
-- scope (total effort in person-weeks)
+SUPPORTED CONSTRAINTS (15 uniform levers):
+- headcount: number of team members
+- budget: total project budget in dollars
+- deadlineWeeks: delivery timeline in weeks
+- scope: total effort in person-weeks
+- teamSeniorityMix: senior ratio (0.0 to 1.0)
+- attritionRisk: expected project turnover rate (0.0 to 1.0)
+- externalDependencyCount: count of external dependencies
+- technicalDebtLevel: technical debt severity rating (0 to 10)
+- scopeVolatility: requirements change percentage (0 to 100%)
+- distributedTeamOverhead: distinct physical/geographic team sites (>= 1)
+- vendorLeadTimeWeeks: vendor delivery lead time in weeks
+- regulatoryComplexity: regulatory compliance bar (0 to 10)
+- qualityRigor: testing bar (0 to 10)
+- stakeholderCount: number of distinct approval stakeholder groups
+- teamFamiliarity: team domain/technology familiarity ratio (0.0 to 1.0)
 
 DELTA TYPES:
 - "absolute": Use when an exact target number is given (e.g., "set budget to 500k" -> type: "absolute", value: 500000).
 - "percent": Use when a relative percentage change is specified (e.g., "cut budget by 20%" -> type: "percent", value: -20; "increase headcount by 10%" -> type: "percent", value: 10).
-- "delta": Use when an addition or subtraction of units is specified (e.g., "add 2 people" -> type: "delta", value: 2; "push deadline back 4 weeks" -> type: "delta", value: 4; "reduce timeline by 3 weeks" -> type: "delta", value: -3).
+- "delta": Use when an addition or subtraction of units is specified (e.g., "add 2 people" -> type: "delta", value: 2; "push deadline back 4 weeks" -> type: "delta", value: 4).
 
 MULTI-FIELD EXTRACTION:
-Multi-field extraction is the PRIMARY case. A sentence naming multiple changes (e.g., "cut budget 20%, add 2 people, push deadline back 4 weeks") MUST populate every mentioned field in one response.
+Multi-field extraction is the PRIMARY case. Populated every mentioned field in one response.
 Fields not mentioned in the user's intent should be null.
 Do NOT invent fields or values not requested by the user.`;
 
@@ -97,11 +82,14 @@ export function buildIntentParsingUserPrompt(
   freeText: string,
   baselineInputs: ScenarioInputs
 ): string {
+  const constraints = baselineInputs.constraints || {};
+  const activeEntries = Object.entries(constraints)
+    .filter(([_, s]) => s?.enabled)
+    .map(([k, s]) => `- ${k}: ${s!.value}`)
+    .join("\n");
+
   return `Baseline scenario inputs:
-- budget: ${baselineInputs.budget}
-- headcount: ${baselineInputs.headcount}
-- deadlineWeeks: ${baselineInputs.deadlineWeeks}
-- scope: ${baselineInputs.scope ?? "default"}
+${activeEntries || "(No constraints currently active)"}
 
 User request:
 "${freeText}"
@@ -122,28 +110,45 @@ export function buildDiffExplanationUserPrompt(diff: ScenarioDiff): string {
   const inputs = diff.inputDiff;
   const outputs = diff.outputDiff;
 
+  const inputLines = Object.entries(inputs)
+    .filter((entry): entry is [string, NonNullable<typeof entry[1]>] => Boolean(entry[1]))
+    .map(
+      ([key, delta]) =>
+        `- ${key}: from ${delta.from} to ${delta.to} (delta: ${delta.delta}, percentChange: ${delta.percentChange}%, direction: ${delta.direction})`
+    )
+    .join("\n");
+
+  const outputLines = Object.entries(outputs)
+    .filter(
+      (entry): entry is [string, NonNullable<typeof entry[1]>] =>
+        entry[0] !== "feasible" && entry[0] !== "riskBreakdown" && Boolean(entry[1])
+    )
+    .map(
+      ([key, delta]) =>
+        `- ${key}: from ${(delta as any).from} to ${(delta as any).to} (delta: ${(delta as any).delta})`
+    )
+    .join("\n");
+
   let prompt = `Scenario Diff Details:
 Comparing Scenario ${diff.scenarioAId} -> Scenario ${diff.scenarioBId}
 
 INPUT DELTAS:
-- budget: from ${inputs.budget.from} to ${inputs.budget.to} (delta: ${inputs.budget.delta}, percentChange: ${inputs.budget.percentChange}%, direction: ${inputs.budget.direction})
-- headcount: from ${inputs.headcount.from} to ${inputs.headcount.to} (delta: ${inputs.headcount.delta}, percentChange: ${inputs.headcount.percentChange}%, direction: ${inputs.headcount.direction})
-- deadlineWeeks: from ${inputs.deadlineWeeks.from} to ${inputs.deadlineWeeks.to} (delta: ${inputs.deadlineWeeks.delta}, percentChange: ${inputs.deadlineWeeks.percentChange}%, direction: ${inputs.deadlineWeeks.direction})
-- scope: from ${inputs.scope.from} to ${inputs.scope.to} (delta: ${inputs.scope.delta}, percentChange: ${inputs.scope.percentChange}%, direction: ${inputs.scope.direction})
+${inputLines || "(No shared inputs changed)"}
 
 OUTPUT DELTAS:
-- estimatedTimeWeeks: from ${outputs.estimatedTimeWeeks.from} to ${outputs.estimatedTimeWeeks.to} (delta: ${outputs.estimatedTimeWeeks.delta})
-- effectiveHeadcount: from ${outputs.effectiveHeadcount.from} to ${outputs.effectiveHeadcount.to} (delta: ${outputs.effectiveHeadcount.delta})
-- actualCost: from ${outputs.actualCost.from} to ${outputs.actualCost.to} (delta: ${outputs.actualCost.delta})
-- budgetUtilization: from ${outputs.budgetUtilization.from} to ${outputs.budgetUtilization.to} (delta: ${outputs.budgetUtilization.delta})
-- scheduleUtilization: from ${outputs.scheduleUtilization.from} to ${outputs.scheduleUtilization.to} (delta: ${outputs.scheduleUtilization.delta})
-- riskScore: from ${outputs.riskScore.from} to ${outputs.riskScore.to} (delta: ${outputs.riskScore.delta}, direction: ${outputs.riskScore.direction})
-- riskBreakdown:
-  * scheduleRisk: from ${outputs.riskBreakdown.scheduleRisk.from} to ${outputs.riskBreakdown.scheduleRisk.to}
-  * budgetRisk: from ${outputs.riskBreakdown.budgetRisk.from} to ${outputs.riskBreakdown.budgetRisk.to}
-  * staffingRisk: from ${outputs.riskBreakdown.staffingRisk.from} to ${outputs.riskBreakdown.staffingRisk.to}
-- feasible: from ${outputs.feasible.from} to ${outputs.feasible.to} (changed: ${outputs.feasible.changed})
+${outputLines}
 `;
+
+  if (outputs.feasible) {
+    prompt += `- feasible: from ${outputs.feasible.from} to ${outputs.feasible.to} (changed: ${outputs.feasible.changed})\n`;
+  }
+
+  if (diff.onlyInA && diff.onlyInA.length > 0) {
+    prompt += `\nONLY IN SCENARIO A: ${diff.onlyInA.join(", ")}\n`;
+  }
+  if (diff.onlyInB && diff.onlyInB.length > 0) {
+    prompt += `\nONLY IN SCENARIO B: ${diff.onlyInB.join(", ")}\n`;
+  }
 
   if (diff.monteCarloDiff) {
     const mc = diff.monteCarloDiff;

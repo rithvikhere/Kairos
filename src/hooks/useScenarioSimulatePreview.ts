@@ -43,7 +43,7 @@ export function useScenarioSimulatePreview(
       active = false;
       clearTimeout(timer);
     };
-  }, [inputs.budget, inputs.headcount, inputs.deadlineWeeks, inputs.scope, delayMs]);
+  }, [JSON.stringify(inputs.constraints), delayMs]);
 
   return { result, isLoading, error };
 }

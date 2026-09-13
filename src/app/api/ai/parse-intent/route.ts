@@ -14,11 +14,19 @@ const ParseIntentBodySchema = z.object({
 export async function POST(request: Request) {
   try {
     const json = await request.json();
+    const hadConstraints =
+      json?.baselineInputs &&
+      typeof json.baselineInputs === "object" &&
+      "constraints" in json.baselineInputs;
     const body = ParseIntentBodySchema.parse(json);
 
     try {
       const delta = await parseScenarioIntent(body.freeText, body.baselineInputs);
-      const resolvedInputs = applyIntentDelta(body.baselineInputs, delta);
+      let resolvedInputs = applyIntentDelta(body.baselineInputs, delta);
+      if (!hadConstraints && resolvedInputs && "constraints" in resolvedInputs) {
+        const { constraints: _c, ...rest } = resolvedInputs;
+        resolvedInputs = rest;
+      }
       return ok({ delta, resolvedInputs });
     } catch (err) {
       if (err instanceof AiUnavailableError) {

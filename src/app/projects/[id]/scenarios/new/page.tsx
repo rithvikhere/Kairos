@@ -52,10 +52,12 @@ export default function NewScenarioPage() {
   const [runMonteCarlo, setRunMonteCarlo] = useState(true);
 
   const [inputs, setInputs] = useState<ScenarioInputs>({
-    budget: initialBudget,
-    headcount: initialHeadcount,
-    deadlineWeeks: initialDeadline,
-    scope: initialScope,
+    constraints: {
+      budget: { enabled: true, value: initialBudget },
+      headcount: { enabled: true, value: initialHeadcount },
+      deadlineWeeks: { enabled: true, value: initialDeadline },
+      scope: { enabled: true, value: initialScope },
+    },
   });
 
   // Debounced live simulation preview
@@ -82,10 +84,7 @@ export default function NewScenarioPage() {
         description: description.trim() || null,
         tags,
         inputs: {
-          budget: inputs.budget,
-          headcount: inputs.headcount,
-          deadlineWeeks: inputs.deadlineWeeks,
-          scope: inputs.scope,
+          constraints: inputs.constraints,
         },
         runMonteCarlo,
         monteCarloOptions: runMonteCarlo ? { iterations: 1000 } : undefined,
@@ -242,11 +241,19 @@ export default function NewScenarioPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-ink/60">Duration:</span>
-                <span>{savedScenario.deterministic_output.estimatedTimeWeeks} weeks</span>
+                <span>
+                  {savedScenario.deterministic_output.computed?.estimatedTimeWeeks !== undefined
+                    ? `${savedScenario.deterministic_output.computed.estimatedTimeWeeks} weeks`
+                    : "—"}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-ink/60">Total Cost:</span>
-                <span>${(savedScenario.deterministic_output.actualCost / 1000).toFixed(0)}k</span>
+                <span>
+                  {savedScenario.deterministic_output.computed?.actualCost !== undefined
+                    ? `$${(savedScenario.deterministic_output.computed.actualCost / 1000).toFixed(0)}k`
+                    : "—"}
+                </span>
               </div>
             </div>
           )}

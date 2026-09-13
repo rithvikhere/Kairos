@@ -25,6 +25,8 @@ import { RISK_COLOR_MAP } from "../../../../../lib/riskColorMap.js";
 import { Badge } from "../../../../../components/ui/Badge.js";
 import { AnimatedButton } from "../../../../../components/ui/AnimatedButton.js";
 import { MonteCarloDistributionChart } from "../../../../../components/scenario/MonteCarloDistributionChart.js";
+import { MonteCarloConvergenceChart } from "../../../../../components/scenario/MonteCarloConvergenceChart.js";
+import { TrialScatterPlot } from "../../../../../components/scenario/TrialScatterPlot.js";
 import { useUiStore } from "../../../../../stores/uiStore.js";
 import {
   Dialog,
@@ -35,6 +37,24 @@ import {
   DialogFooter,
 } from "../../../../../components/ui/Dialog.js";
 import * as api from "../../../../../lib/api-client.js";
+
+function getInputValue(inputs: any, key: string, defaultVal: number): number {
+  if (inputs?.constraints?.[key]) {
+    const setting = inputs.constraints[key];
+    if (typeof setting.value === "number") return setting.value;
+    if (typeof setting.value === "object" && setting.value !== null) {
+      if ("value" in setting.value) return Number(setting.value.value);
+      if ("mean" in setting.value) return Number(setting.value.mean);
+      if ("min" in setting.value && "max" in setting.value) {
+        return (Number(setting.value.min) + Number(setting.value.max)) / 2;
+      }
+    }
+  }
+  if (inputs?.[key] !== undefined) {
+    return Number(inputs[key]) || defaultVal;
+  }
+  return defaultVal;
+}
 
 export default function ScenarioDetailPage() {
   const params = useParams();
@@ -87,14 +107,18 @@ export default function ScenarioDetailPage() {
     compareScenarioIds[0] === scenario.id || compareScenarioIds[1] === scenario.id;
 
   const handleFork = () => {
+    const budgetVal = getInputValue(scenario.inputs, "budget", 250000);
+    const headcountVal = getInputValue(scenario.inputs, "headcount", 8);
+    const deadlineVal = getInputValue(scenario.inputs, "deadlineWeeks", 16);
+    const scopeVal = getInputValue(scenario.inputs, "scope", 480);
     const query = new URLSearchParams({
       parentScenarioId: scenario.id,
       name: scenario.name,
       description: scenario.description || "",
-      budget: String(scenario.inputs.budget),
-      headcount: String(scenario.inputs.headcount),
-      deadlineWeeks: String(scenario.inputs.deadlineWeeks),
-      scope: String(scenario.inputs.scope || 480),
+      budget: String(budgetVal),
+      headcount: String(headcountVal),
+      deadlineWeeks: String(deadlineVal),
+      scope: String(scopeVal),
     });
     router.push(`/projects/${projectId}/scenarios/new?${query.toString()}`);
   };
@@ -109,6 +133,8 @@ export default function ScenarioDetailPage() {
     try {
       const res = await api.simulateMonteCarlo(scenario.inputs, {
         iterations: 1000,
+        recordCheckpoints: { every: 50 },
+        sampleTrials: { count: 200 },
       });
       setLocalMC(res);
     } catch (err) {
@@ -138,64 +164,66 @@ export default function ScenarioDetailPage() {
               </h1>
               <Badge variant={riskBand}>{visualConfig.label}</Badge>
               <span
-                className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-semibold border ${
                   out.feasible
-                    ? "bg-risk-low text-[#2a4225]"
-                    : "bg-risk-crit text-[#4f1e14]"
+                    ? "bg-risk-low/20 text-[#253f28] border-risk-low/30"
+                    : "bg-risk-crit/20 text-[#4f1e14] border-risk-crit/30"
                 }`}
               >
                 {out.feasible ? "Feasible" : "Infeasible"}
               </span>
+              {scenario.is_favorite && (
+                <span className="text-accent text-xs">★ Favorite</span>
+              )}
+              {scenario.is_archived && (
+                <span className="text-xs text-ink/40">(Archived)</span>
+              )}
             </div>
 
             {scenario.description && (
-              <p className="text-sm text-ink/70 max-w-2xl leading-relaxed">
-                {scenario.description}
-              </p>
+              <p className="text-xs text-ink/70 max-w-2xl">{scenario.description}</p>
             )}
 
-            <div className="flex flex-wrap items-center gap-4 text-xs text-ink/50 pt-1">
-              <span className="flex items-center gap-1.5">
+            <div className="flex items-center gap-4 text-xs text-ink/50 pt-1">
+              <span className="flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5" />
-                Created {new Date(scenario.created_at).toLocaleDateString()}
+                Updated {new Date(scenario.updated_at).toLocaleDateString()}
               </span>
               {scenario.tags && scenario.tags.length > 0 && (
-                <div className="flex items-center gap-1">
+                <span className="flex items-center gap-1">
                   <Tag className="w-3.5 h-3.5" />
-                  {scenario.tags.map((t) => (
-                    <span key={t} className="bg-neutral px-1.5 py-0.5 rounded text-[11px]">
-                      #{t}
-                    </span>
-                  ))}
-                </div>
+                  {scenario.tags.join(", ")}
+                </span>
               )}
             </div>
           </div>
         </div>
 
-        {/* Action Toolbar */}
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => toggleCompareScenario(scenario.id)}
-            className={`p-2 rounded-lg border transition-colors ${
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors ${
               isCompared
-                ? "bg-accent text-base border-[#2e4755]"
-                : "border-neutral text-ink/70 hover:bg-neutral hover:text-ink"
+                ? "bg-accent text-light border-accent"
+                : "border-neutral text-ink hover:bg-neutral"
             }`}
-            title="Toggle Compare"
           >
-            <GitCompare className="w-4 h-4" />
+            <GitCompare className="w-3.5 h-3.5" />
+            <span>{isCompared ? "In Comparison" : "Compare"}</span>
           </button>
 
           <button
             onClick={() => toggleFavoriteMutation.mutate(scenario.id)}
-            className="p-2 rounded-lg border border-neutral text-ink/70 hover:text-[#d6ad76] hover:bg-neutral transition-colors"
-            title="Favorite"
+            className={`p-2 rounded-lg border border-neutral transition-colors ${
+              scenario.is_favorite
+                ? "text-[#c98a3e] bg-[#c98a3e]/10 border-[#c98a3e]/30"
+                : "text-ink/70 hover:text-ink hover:bg-neutral"
+            }`}
+            title={scenario.is_favorite ? "Unfavorite" : "Favorite"}
           >
             <Star
-              className={`w-4 h-4 ${
-                scenario.is_favorite ? "text-[#d6ad76] fill-[#d6ad76]" : ""
-              }`}
+              className={`w-4 h-4 ${scenario.is_favorite ? "fill-[#c98a3e]" : ""}`}
             />
           </button>
 
@@ -239,25 +267,25 @@ export default function ScenarioDetailPage() {
             <div className="flex justify-between py-2 border-b border-neutral/60">
               <span className="text-ink/60">Budget Available</span>
               <span className="font-mono font-bold text-ink">
-                ${Number(scenario.inputs.budget).toLocaleString()}
+                ${getInputValue(scenario.inputs, "budget", 250000).toLocaleString()}
               </span>
             </div>
             <div className="flex justify-between py-2 border-b border-neutral/60">
               <span className="text-ink/60">Team Headcount</span>
               <span className="font-mono font-bold text-ink">
-                {Number(scenario.inputs.headcount)} people
+                {getInputValue(scenario.inputs, "headcount", 8)} people
               </span>
             </div>
             <div className="flex justify-between py-2 border-b border-neutral/60">
               <span className="text-ink/60">Target Deadline</span>
               <span className="font-mono font-bold text-ink">
-                {Number(scenario.inputs.deadlineWeeks)} weeks
+                {getInputValue(scenario.inputs, "deadlineWeeks", 16)} weeks
               </span>
             </div>
             <div className="flex justify-between py-2">
               <span className="text-ink/60">Total Scope</span>
               <span className="font-mono font-bold text-ink">
-                {Number(scenario.inputs.scope ?? 480)} person-weeks
+                {getInputValue(scenario.inputs, "scope", 480)} person-weeks
               </span>
             </div>
           </div>
@@ -281,25 +309,25 @@ export default function ScenarioDetailPage() {
             <div className="flex justify-between py-2 border-b border-neutral/60">
               <span className="text-ink/60">Estimated Duration</span>
               <span className="font-mono font-bold text-ink">
-                {out.estimatedTimeWeeks} weeks
+                {out.computed?.estimatedTimeWeeks !== undefined ? `${out.computed.estimatedTimeWeeks} weeks` : "—"}
               </span>
             </div>
             <div className="flex justify-between py-2 border-b border-neutral/60">
               <span className="text-ink/60">Effective Headcount</span>
               <span className="font-mono font-bold text-ink">
-                {out.effectiveHeadcount.toFixed(1)} people
+                {out.computed?.effectiveHeadcount !== undefined ? `${out.computed.effectiveHeadcount.toFixed(1)} people` : "—"}
               </span>
             </div>
             <div className="flex justify-between py-2 border-b border-neutral/60">
               <span className="text-ink/60">Actual Cost</span>
               <span className="font-mono font-bold text-ink">
-                ${out.actualCost.toLocaleString()}
+                {out.computed?.actualCost !== undefined ? `$${Math.round(out.computed.actualCost).toLocaleString()}` : "—"}
               </span>
             </div>
             <div className="flex justify-between py-2">
               <span className="text-ink/60">Budget Utilization</span>
               <span className="font-mono font-bold text-ink">
-                {(out.budgetUtilization * 100).toFixed(0)}%
+                {out.computed?.budgetUtilization !== undefined ? `${(out.computed.budgetUtilization * 100).toFixed(0)}%` : "—"}
               </span>
             </div>
           </div>
@@ -310,15 +338,15 @@ export default function ScenarioDetailPage() {
             <div className="grid grid-cols-3 gap-2 text-center">
               <div className="p-2 rounded bg-neutral/40">
                 <div className="text-[10px] text-ink/50">Schedule (40%)</div>
-                <div className="font-bold">{out.riskBreakdown.scheduleRisk}</div>
+                <div className="font-bold">{out.riskBreakdown?.scheduleRisk ?? out.computed?.scheduleRisk ?? "—"}</div>
               </div>
               <div className="p-2 rounded bg-neutral/40">
                 <div className="text-[10px] text-ink/50">Budget (40%)</div>
-                <div className="font-bold">{out.riskBreakdown.budgetRisk}</div>
+                <div className="font-bold">{out.riskBreakdown?.budgetRisk ?? out.computed?.budgetRisk ?? "—"}</div>
               </div>
               <div className="p-2 rounded bg-neutral/40">
                 <div className="text-[10px] text-ink/50">Staffing (20%)</div>
-                <div className="font-bold">{out.riskBreakdown.staffingRisk}</div>
+                <div className="font-bold">{out.riskBreakdown?.staffingRisk ?? out.computed?.staffingRisk ?? "—"}</div>
               </div>
             </div>
           </div>
@@ -327,7 +355,15 @@ export default function ScenarioDetailPage() {
 
       {/* Monte Carlo Section */}
       {effectiveMC ? (
-        <MonteCarloDistributionChart monteCarlo={effectiveMC} />
+        <div className="space-y-6">
+          <MonteCarloDistributionChart monteCarlo={effectiveMC} />
+          {effectiveMC.convergence && effectiveMC.convergence.length > 0 && (
+            <MonteCarloConvergenceChart convergence={effectiveMC.convergence} />
+          )}
+          {effectiveMC.trialSample && effectiveMC.trialSample.length > 0 && (
+            <TrialScatterPlot trialSample={effectiveMC.trialSample} />
+          )}
+        </div>
       ) : (
         <div className="p-8 rounded-2xl border border-dashed border-neutral bg-[#faf8f4] text-center space-y-3">
           <div className="w-10 h-10 rounded-full bg-neutral mx-auto flex items-center justify-center text-accent">

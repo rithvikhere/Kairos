@@ -30,21 +30,101 @@ export const DistributionSchema = z.discriminatedUnion("kind", [
 /** Single lever input: either a concrete scalar or an explicit Distribution. */
 export const NumericOrDistributionSchema = z.union([z.number(), DistributionSchema]);
 
-/** Uncertain inputs accepted by scenario models and Monte Carlo simulations. */
-export const UncertainScenarioInputsSchema = z.object({
-  budget: NumericOrDistributionSchema,
-  headcount: NumericOrDistributionSchema,
-  deadlineWeeks: NumericOrDistributionSchema,
-  scope: NumericOrDistributionSchema.optional(),
+/** 15 Uniform Constraint Keys. */
+export const ConstraintKeySchema = z.enum([
+  "headcount",
+  "budget",
+  "deadlineWeeks",
+  "scope",
+  "teamSeniorityMix",
+  "attritionRisk",
+  "externalDependencyCount",
+  "technicalDebtLevel",
+  "scopeVolatility",
+  "distributedTeamOverhead",
+  "vendorLeadTimeWeeks",
+  "regulatoryComplexity",
+  "qualityRigor",
+  "stakeholderCount",
+  "teamFamiliarity",
+]);
+
+/** Setting for a single constraint with concrete numeric value. */
+export const ConstraintSettingSchema = z.object({
+  enabled: z.boolean(),
+  value: z.number(),
 });
 
-/** Concrete scalar inputs required by the pure deterministic simulate() engine. */
-export const ScenarioInputsSchema = z.object({
-  budget: z.number(),
-  headcount: z.number(),
-  deadlineWeeks: z.number(),
-  scope: z.number().optional(),
+/** Setting for a single constraint with scalar or probability distribution. */
+export const UncertainConstraintSettingSchema = z.object({
+  enabled: z.boolean(),
+  value: NumericOrDistributionSchema,
 });
+
+function preprocessConstraints(val: unknown) {
+  if (typeof val === "object" && val !== null) {
+    const obj = val as Record<string, any>;
+    if ("constraints" in obj && typeof obj.constraints === "object" && obj.constraints !== null) {
+      return val;
+    }
+    const constraints: Record<string, any> = {};
+    for (const key of [
+      "headcount",
+      "budget",
+      "deadlineWeeks",
+      "scope",
+      "teamSeniorityMix",
+      "attritionRisk",
+      "externalDependencyCount",
+      "technicalDebtLevel",
+      "scopeVolatility",
+      "distributedTeamOverhead",
+      "vendorLeadTimeWeeks",
+      "regulatoryComplexity",
+      "qualityRigor",
+      "stakeholderCount",
+      "teamFamiliarity",
+    ]) {
+      if (key in obj && obj[key] !== undefined) {
+        constraints[key] = { enabled: true, value: obj[key] };
+      }
+    }
+    return { constraints };
+  }
+  return val;
+}
+
+/** Uncertain inputs accepted by scenario models and Monte Carlo simulations. */
+export const UncertainScenarioInputsSchema = z.preprocess(
+  preprocessConstraints,
+  z
+    .object({
+      constraints: z.record(ConstraintKeySchema, UncertainConstraintSettingSchema),
+    })
+    .refine(
+      (data) => {
+        const active = Object.values(data.constraints || {}).filter((c) => c.enabled);
+        return active.length >= 1;
+      },
+      { message: "At least one constraint must be enabled" }
+    )
+);
+
+/** Concrete scalar inputs required by the pure deterministic simulate() engine. */
+export const ScenarioInputsSchema = z.preprocess(
+  preprocessConstraints,
+  z
+    .object({
+      constraints: z.record(ConstraintKeySchema, ConstraintSettingSchema),
+    })
+    .refine(
+      (data) => {
+        const active = Object.values(data.constraints || {}).filter((c) => c.enabled);
+        return active.length >= 1;
+      },
+      { message: "At least one constraint must be enabled" }
+    )
+);
 
 /** Body schema for POST /api/projects. */
 export const CreateProjectSchema = z.object({
@@ -57,6 +137,24 @@ export const CreateProjectSchema = z.object({
 /** Body schema for PATCH /api/projects/[id]/tags. */
 export const UpdateProjectTagsSchema = z.object({
   suggestedTags: TagsSchema,
+});
+
+/** Options configuring a Monte Carlo run. */
+export const MonteCarloOptionsSchema = z.object({
+  iterations: z.number().int().positive().optional(),
+  seed: z.number().int().optional(),
+  bucketCount: z.number().int().positive().optional(),
+  recordCheckpoints: z
+    .object({
+      every: z.number().int().positive(),
+      metric: z.string().optional(),
+    })
+    .optional(),
+  sampleTrials: z
+    .object({
+      count: z.number().int().positive(),
+    })
+    .optional(),
 });
 
 /**
@@ -74,12 +172,7 @@ export const CreateScenarioSchema = z.object({
   tags: TagsSchema.optional(),
   inputs: UncertainScenarioInputsSchema,
   runMonteCarlo: z.boolean().optional().default(false),
-  monteCarloOptions: z
-    .object({
-      iterations: z.number().int().positive().optional(),
-      seed: z.number().int().optional(),
-    })
-    .optional(),
+  monteCarloOptions: MonteCarloOptionsSchema.optional(),
 });
 
 /** Body schema for PATCH /api/scenarios/[id]. */
@@ -97,11 +190,5 @@ export const ArchiveScenarioSchema = z.object({
 /** Body schema for POST /api/simulate/monte-carlo. */
 export const SimulateMonteCarloSchema = z.object({
   inputs: UncertainScenarioInputsSchema,
-  options: z
-    .object({
-      iterations: z.number().int().positive().optional(),
-      seed: z.number().int().optional(),
-      bucketCount: z.number().int().positive().optional(),
-    })
-    .optional(),
+  options: MonteCarloOptionsSchema.optional(),
 });

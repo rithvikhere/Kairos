@@ -145,25 +145,33 @@ export const ScenarioCard: React.FC<ScenarioCardProps> = ({ scenario, projectId 
           <div>
             <span className="text-ink/50 text-[10px] uppercase">Duration:</span>{" "}
             <span className="font-medium text-ink">
-              {output.estimatedTimeWeeks} wks
+              {(output.estimatedTimeWeeks ?? output.computed?.estimatedTimeWeeks) !== undefined
+                ? `${output.estimatedTimeWeeks ?? output.computed?.estimatedTimeWeeks} wks`
+                : "—"}
             </span>
           </div>
           <div>
             <span className="text-ink/50 text-[10px] uppercase">Cost:</span>{" "}
             <span className="font-medium text-ink">
-              ${(output.actualCost / 1000).toFixed(0)}k
+              {(output.actualCost ?? output.computed?.actualCost) !== undefined
+                ? `$${(((output.actualCost ?? output.computed?.actualCost)!) / 1000).toFixed(0)}k`
+                : "—"}
             </span>
           </div>
           <div>
             <span className="text-ink/50 text-[10px] uppercase">Staff:</span>{" "}
             <span className="font-medium text-ink">
-              {output.effectiveHeadcount.toFixed(1)}
+              {(output.effectiveHeadcount ?? output.computed?.effectiveHeadcount) !== undefined
+                ? (output.effectiveHeadcount ?? output.computed?.effectiveHeadcount)!.toFixed(1)
+                : "—"}
             </span>
           </div>
           <div>
             <span className="text-ink/50 text-[10px] uppercase">Budget:</span>{" "}
             <span className="font-medium text-ink">
-              {(output.budgetUtilization * 100).toFixed(0)}%
+              {(output.budgetUtilization ?? output.computed?.budgetUtilization) !== undefined
+                ? `${(((output.budgetUtilization ?? output.computed?.budgetUtilization)!) * 100).toFixed(0)}%`
+                : "—"}
             </span>
           </div>
         </div>

@@ -1,38 +1,23 @@
 /**
- * Monte Carlo simulation layer.
+ * Monte Carlo simulation layer for Phase 8.
  *
- * This module wraps the deterministic core `simulate()` in a probabilistic
- * sampling framework. In real-world project planning, key levers such as
- * budget, available headcount, delivery deadlines, and overall scope are rarely
- * known with absolute certainty.
+ * Implements stochastic sampling over the uniform 15-constraint model.
+ * Each constraint's setting can wrap a concrete numeric value or a Distribution
+ * (fixed, uniform, normal).
  *
- * Rather than forcing stakeholders to pick single point estimates, this layer
- * models inputs as probability distributions (fixed point values, uniform ranges,
- * or normal distributions). By taking repeated pseudo-random draws from these
- * input distributions and evaluating each draw through the real `simulate()`
- * function, we construct full empirical probability distributions across all
- * simulation outputs (cost, time, risk, utilizations, feasibility).
- *
- * Philosophy:
- * - Deterministic core remains untouched: every sample is evaluated by the exact
- *   formulas in `simulation.ts`.
- * - Credibility & traceability: output distributions reflect the combined variance
- *   of the inputs propagated through explicit formulas — nothing is synthesized
- *   by AI or heuristic shortcuts.
- * - Reproducibility: an optional seed parameter enables byte-for-byte reproducible
- *   runs via a self-contained PRNG (mulberry32).
+ * Provides convergence checkpoint tracking and trial scatter sampling.
  */
 
 import { DEFAULT_SCOPE_PERSON_WEEKS } from "./constants.js";
 import { InvalidScenarioError, simulate } from "./simulation.js";
-import type { ScenarioInputs, SimulationResult } from "./types.js";
+import type {
+  ConstraintKey,
+  ScenarioInputs,
+  SimulationResult,
+} from "./types.js";
 
 /**
  * Specification for an input distribution.
- *
- * - `fixed`: A deterministic point estimate. Always returns `value`.
- * - `normal`: A Gaussian distribution with specified `mean` and `stddev`.
- * - `uniform`: A continuous uniform distribution bounded in `[min, max]`.
  */
 export type Distribution =
   | { kind: "fixed"; value: number }
@@ -40,49 +25,29 @@ export type Distribution =
   | { kind: "uniform"; min: number; max: number };
 
 /**
- * Levers for a scenario where each numeric parameter can be either a concrete
- * number (treated as a fixed point estimate) or a probability distribution.
+ * An individual uncertain constraint setting.
  */
-export interface UncertainScenarioInputs {
-  /** Total budget available, or a distribution over budget in dollars. */
-  budget: number | Distribution;
-  /** Team headcount, or a distribution over headcount. */
-  headcount: number | Distribution;
-  /** Delivery deadline in weeks, or a distribution over deadline. */
-  deadlineWeeks: number | Distribution;
-  /**
-   * Total effort in person-weeks, or a distribution over effort.
-   * Defaults to DEFAULT_SCOPE_PERSON_WEEKS if omitted.
-   */
-  scope?: number | Distribution;
+export interface UncertainConstraintSetting {
+  enabled: boolean;
+  value: number | Distribution;
 }
 
 /**
- * Normalized scenario inputs where all numeric fields are guaranteed to be
- * explicit `Distribution` objects.
+ * Uncertain inputs for Monte Carlo simulations: uniform constraints where values can be Distributions.
  */
-export interface NormalizedUncertainScenarioInputs {
-  budget: Distribution;
-  headcount: Distribution;
-  deadlineWeeks: Distribution;
-  scope: Distribution;
+export interface UncertainScenarioInputs {
+  constraints: Partial<Record<ConstraintKey, UncertainConstraintSetting>>;
 }
 
 /**
  * Statistical summary of a metric's distribution across Monte Carlo iterations.
  */
 export interface DistributionSummary {
-  /** Expected value (arithmetic mean) across valid runs. */
   mean: number;
-  /** Median (50th percentile) across valid runs. */
   median: number;
-  /** Sample standard deviation across valid runs (0 if invariant or N <= 1). */
   stddev: number;
-  /** Minimum observed value across valid runs. */
   min: number;
-  /** Maximum observed value across valid runs. */
   max: number;
-  /** Key percentiles for assessing risk and confidence intervals. */
   percentiles: {
     p10: number;
     p25: number;
@@ -90,7 +55,6 @@ export interface DistributionSummary {
     p75: number;
     p90: number;
   };
-  /** Empirical frequency distribution divided into contiguous buckets. */
   histogram: Array<{
     bucketStart: number;
     bucketEnd: number;
@@ -98,63 +62,51 @@ export interface DistributionSummary {
   }>;
 }
 
-/** Alias for DistributionSummary. */
 export type MetricDistributionSummary = DistributionSummary;
 
 /**
- * Comprehensive results from a Monte Carlo simulation execution, including metric
- * distributions, feasibility rate, and on-time / within-budget probabilities.
+ * Comprehensive results from a Monte Carlo simulation execution.
  */
 export interface MonteCarloResult {
-  /** Total iterations requested by the caller. */
   iterationsRequested: number;
-  /** Iterations successfully evaluated post-validation filtering. */
   iterationsActuallyUsed: number;
-  /** Alias for iterationsActuallyUsed. */
   iterationsUsed: number;
-  /** Number of iterations dropped due to invalid sampled inputs (e.g. non-positive values). */
   skippedIterations: number;
-  /** Fraction of valid runs where the scenario was feasible (0.0 to 1.0). */
   feasibleRate: number;
-  /** Alias for feasibleRate. */
   feasibilityRate: number;
-  /** Fraction of valid runs where scheduleUtilization <= 1 (i.e., estimatedTimeWeeks did not exceed deadlineWeeks) (0.0 to 1.0). */
   probabilityOnTime: number;
-  /** Fraction of valid runs where budgetUtilization <= 1 (i.e., actualCost did not exceed budget) (0.0 to 1.0). */
   probabilityWithinBudget: number;
 
-  /** Distribution of estimated calendar time in weeks. */
   estimatedTimeWeeks: DistributionSummary;
-  /** Distribution of effective headcount adjusted for coordination overhead. */
   effectiveHeadcount: DistributionSummary;
-  /** Distribution of true project cost in dollars. */
   actualCost: DistributionSummary;
-  /** Distribution of budget utilization (cost / budget). */
   budgetUtilization: DistributionSummary;
-  /** Distribution of schedule utilization (time / deadline). */
   scheduleUtilization: DistributionSummary;
-  /** Distribution of composite risk score (0 to 100). */
   riskScore: DistributionSummary;
+
+  /** Running-mean snapshots recording convergence across trials. */
+  convergence?: Array<{ iteration: number; runningMean: number }>;
+  /** Representative sample of raw trial outcomes for scatter plotting. */
+  trialSample?: Array<{
+    actualCost: number;
+    estimatedTimeWeeks: number;
+    feasible: boolean;
+  }>;
 }
 
 /** Options configuring a Monte Carlo simulation run. */
 export interface MonteCarloOptions {
-  /** Number of sampling iterations to perform. Defaults to 2000. */
   iterations?: number;
-  /** Optional integer seed for repeatable, deterministic pseudo-random sequences. */
   seed?: number;
-  /** Number of histogram bins to generate for metric summaries. Defaults to 10. */
   bucketCount?: number;
+  /** Snapshot running mean of the target metric every N trials. */
+  recordCheckpoints?: { every: number; metric?: string };
+  /** Retain a representative sample of N raw trial outcomes. */
+  sampleTrials?: { count: number };
 }
 
 /**
  * 32-bit Mulberry32 seeded pseudo-random number generator.
- *
- * Produces high-quality uniform floats in [0, 1) using simple 32-bit arithmetic,
- * without requiring external dependencies.
- *
- * @param seed - Any integer seed value.
- * @returns A zero-argument function returning a pseudo-random number in [0, 1).
  */
 export function mulberry32(seed: number): () => number {
   let s = seed >>> 0;
@@ -168,11 +120,6 @@ export function mulberry32(seed: number): () => number {
 
 /**
  * Normalizes a number or Distribution specification into a canonical Distribution object.
- *
- * Shorthand plain numbers are converted into `{ kind: "fixed", value: input }`.
- *
- * @param input - Numeric value or Distribution object.
- * @returns A canonical Distribution object.
  */
 export function normalizeDistribution(input: number | Distribution): Distribution {
   if (typeof input === "number") {
@@ -182,35 +129,41 @@ export function normalizeDistribution(input: number | Distribution): Distributio
 }
 
 /**
- * Normalizes all fields of an UncertainScenarioInputs object, filling default scope if omitted.
- *
- * @param inputs - Raw uncertain scenario inputs.
- * @returns Fully normalized inputs where every property is a Distribution.
+ * Normalizes uncertain inputs from either constraints dictionary or legacy flat levers.
  */
-export function normalizeUncertainInputs(
-  inputs: UncertainScenarioInputs
-): NormalizedUncertainScenarioInputs {
+export function normalizeUncertainInputs(inputs: UncertainScenarioInputs | any): any {
+  if (!inputs) return { constraints: {} };
+
+  if (inputs.constraints && typeof inputs.constraints === "object") {
+    return inputs;
+  }
+
+  const budget = normalizeDistribution(inputs.budget);
+  const headcount = normalizeDistribution(inputs.headcount);
+  const deadlineWeeks = normalizeDistribution(inputs.deadlineWeeks);
+  const scope =
+    inputs.scope !== undefined
+      ? normalizeDistribution(inputs.scope)
+      : { kind: "fixed" as const, value: DEFAULT_SCOPE_PERSON_WEEKS };
+
+  const constraints: Partial<Record<ConstraintKey, UncertainConstraintSetting>> = {
+    budget: { enabled: true, value: budget },
+    headcount: { enabled: true, value: headcount },
+    deadlineWeeks: { enabled: true, value: deadlineWeeks },
+    scope: { enabled: true, value: scope },
+  };
+
   return {
-    budget: normalizeDistribution(inputs.budget),
-    headcount: normalizeDistribution(inputs.headcount),
-    deadlineWeeks: normalizeDistribution(inputs.deadlineWeeks),
-    scope:
-      inputs.scope !== undefined
-        ? normalizeDistribution(inputs.scope)
-        : { kind: "fixed", value: DEFAULT_SCOPE_PERSON_WEEKS },
+    constraints,
+    budget,
+    headcount,
+    deadlineWeeks,
+    scope,
   };
 }
 
 /**
- * Samples a single standard normal variate using the Box-Muller transform,
- * scaled to the requested mean and standard deviation.
- *
- * Consumes exactly two draws from the provided RNG to ensure consistent PRNG state progression.
- *
- * @param mean - Center of the Gaussian distribution.
- * @param stddev - Standard deviation of the Gaussian distribution.
- * @param rng - Pseudo-random generator returning numbers in [0, 1).
- * @returns A sampled floating-point value.
+ * Samples a single standard normal variate using the Box-Muller transform.
  */
 export function sampleNormal(mean: number, stddev: number, rng: () => number): number {
   if (stddev === 0) return mean;
@@ -222,10 +175,6 @@ export function sampleNormal(mean: number, stddev: number, rng: () => number): n
 
 /**
  * Draws a single numeric sample from a distribution specification.
- *
- * @param dist - The distribution to sample from.
- * @param rng - Pseudo-random generator returning numbers in [0, 1).
- * @returns A concrete numeric sample.
  */
 export function sampleDistribution(dist: Distribution, rng: () => number): number {
   switch (dist.kind) {
@@ -239,34 +188,54 @@ export function sampleDistribution(dist: Distribution, rng: () => number): numbe
 }
 
 /**
- * Samples each field of an UncertainScenarioInputs once to produce one concrete ScenarioInputs.
- *
- * Sampling order is deterministic (`budget`, `headcount`, `deadlineWeeks`, `scope`)
- * to ensure that identical seeds always generate identical scenario trajectories.
- *
- * @param inputs - Uncertain scenario levers.
- * @param rng - Pseudo-random generator returning numbers in [0, 1).
- * @returns A single concrete ScenarioInputs ready for simulation.
+ * Samples each active constraint of an UncertainScenarioInputs once to produce a concrete ScenarioInputs.
  */
 export function sampleScenarioInputs(
-  inputs: UncertainScenarioInputs,
+  inputs: UncertainScenarioInputs | any,
   rng: () => number
-): ScenarioInputs {
-  const normalized = normalizeUncertainInputs(inputs);
-  return {
-    budget: sampleDistribution(normalized.budget, rng),
-    headcount: sampleDistribution(normalized.headcount, rng),
-    deadlineWeeks: sampleDistribution(normalized.deadlineWeeks, rng),
-    scope: sampleDistribution(normalized.scope, rng),
-  };
+): ScenarioInputs & {
+  budget?: number;
+  headcount?: number;
+  deadlineWeeks?: number;
+  scope?: number;
+} {
+  const normalizedInputs = normalizeUncertainInputs(inputs);
+  const sampledConstraints: Partial<Record<ConstraintKey, { enabled: boolean; value: number }>> = {};
+
+  const keys = (Object.keys(normalizedInputs.constraints) as ConstraintKey[]).sort();
+
+  for (const key of keys) {
+    const setting = normalizedInputs.constraints[key];
+    if (!setting) continue;
+
+    if (setting.enabled) {
+      const dist = normalizeDistribution(setting.value);
+      const val = sampleDistribution(dist, rng);
+      sampledConstraints[key] = { enabled: true, value: val };
+    } else {
+      sampledConstraints[key] = {
+        enabled: false,
+        value: typeof setting.value === "number" ? setting.value : 0,
+      };
+    }
+  }
+
+  // Ensure default scope if headcount is enabled and scope constraint was omitted
+  if (sampledConstraints.headcount?.enabled && !sampledConstraints.scope) {
+    sampledConstraints.scope = { enabled: true, value: DEFAULT_SCOPE_PERSON_WEEKS };
+  }
+
+  const result: any = { constraints: sampledConstraints };
+  if (sampledConstraints.budget?.enabled) result.budget = sampledConstraints.budget.value;
+  if (sampledConstraints.headcount?.enabled) result.headcount = sampledConstraints.headcount.value;
+  if (sampledConstraints.deadlineWeeks?.enabled) result.deadlineWeeks = sampledConstraints.deadlineWeeks.value;
+  if (sampledConstraints.scope?.enabled) result.scope = sampledConstraints.scope.value;
+
+  return result;
 }
 
 /**
- * Calculates a percentile value from a sorted array using standard linear interpolation.
- *
- * @param sorted - Non-empty array of numbers sorted in ascending order.
- * @param p - Percentile target between 0.0 and 1.0 (e.g. 0.5 for median).
- * @returns The interpolated percentile value.
+ * Calculates a percentile value from a sorted array using linear interpolation.
  */
 export function calculatePercentile(sorted: number[], p: number): number {
   if (sorted.length === 0) return 0;
@@ -280,15 +249,6 @@ export function calculatePercentile(sorted: number[], p: number): number {
 
 /**
  * Groups an array of numbers into contiguous histogram buckets.
- *
- * When all values are identical (min === max), returns a single bucket containing
- * the entire population to avoid degenerate zero-width intervals.
- *
- * @param values - Array of observed values.
- * @param min - Minimum value in the dataset.
- * @param max - Maximum value in the dataset.
- * @param bucketCount - Number of equal-width bins (defaults to 10).
- * @returns Array of bucket ranges and their occurrence counts.
  */
 export function createHistogram(
   values: number[],
@@ -319,12 +279,7 @@ export function createHistogram(
 }
 
 /**
- * Computes statistical distribution metrics (mean, median, stddev, percentiles, histogram)
- * for a series of observations.
- *
- * @param values - Numeric samples collected across simulation runs.
- * @param bucketCount - Number of histogram bins (defaults to 10).
- * @returns A complete DistributionSummary.
+ * Computes statistical distribution metrics for a series of observations.
  */
 export function summarizeDistribution(
   values: number[],
@@ -347,7 +302,6 @@ export function summarizeDistribution(
   const min = sorted[0]!;
   const max = sorted[n - 1]!;
 
-  // If all values are identical, return exact values with 0 stddev
   if (min === max) {
     return {
       mean: min,
@@ -369,7 +323,6 @@ export function summarizeDistribution(
   const sum = values.reduce((acc, val) => acc + val, 0);
   const mean = sum / n;
 
-  // Sample standard deviation with Bessel's correction (n - 1)
   const sumSquaredDiff = values.reduce((acc, val) => acc + (val - mean) ** 2, 0);
   const variance = n > 1 ? sumSquaredDiff / (n - 1) : 0;
   const stddev = Math.sqrt(Math.max(0, variance));
@@ -395,21 +348,12 @@ export function summarizeDistribution(
 
 /**
  * Executes a Monte Carlo simulation over uncertain scenario inputs.
- *
- * Evaluates `iterations` pseudo-randomly sampled scenarios using the deterministic
- * `simulate()` engine. If a sampled scenario produces invalid inputs (e.g., negative
- * headcount or non-positive budget resulting from normal distribution tails),
- * the iteration is safely skipped and recorded in `skippedIterations` rather than
- * terminating the run.
- *
- * @param inputs - Uncertain scenario inputs containing numbers or distribution specs.
- * @param options - Simulation options (iterations count, random seed, histogram bucket count).
- * @returns Aggregated distribution summaries for all simulation outputs, feasibility rate, and on-time / within-budget probabilities.
  */
 export function runMonteCarloSimulation(
-  inputs: UncertainScenarioInputs,
+  rawInputs: UncertainScenarioInputs | any,
   options?: MonteCarloOptions
 ): MonteCarloResult {
+  const inputs = normalizeUncertainInputs(rawInputs);
   const iterationsRequested = options?.iterations ?? 2000;
   const bucketCount = options?.bucketCount ?? 10;
   const rng = options?.seed !== undefined ? mulberry32(options.seed) : Math.random;
@@ -417,11 +361,30 @@ export function runMonteCarloSimulation(
   const validResults: SimulationResult[] = [];
   let skippedIterations = 0;
 
+  // Checkpoint tracking state
+  const checkpointEvery = options?.recordCheckpoints?.every;
+  const targetMetric = options?.recordCheckpoints?.metric ?? "actualCost";
+  const convergence: Array<{ iteration: number; runningMean: number }> = [];
+  let runningTargetMetricSum = 0;
+
   for (let i = 0; i < iterationsRequested; i++) {
     const sampled = sampleScenarioInputs(inputs, rng);
     try {
       const result = simulate(sampled);
       validResults.push(result);
+
+      if (checkpointEvery && checkpointEvery > 0) {
+        const metricVal =
+          result.computed[targetMetric] ?? (result as Record<string, any>)[targetMetric] ?? 0;
+        runningTargetMetricSum += metricVal;
+        const currentCount = validResults.length;
+        if (currentCount % checkpointEvery === 0) {
+          convergence.push({
+            iteration: currentCount,
+            runningMean: runningTargetMetricSum / currentCount,
+          });
+        }
+      }
     } catch (err) {
       if (err instanceof InvalidScenarioError) {
         skippedIterations++;
@@ -435,19 +398,80 @@ export function runMonteCarloSimulation(
   const feasibleCount = validResults.filter((r) => r.feasible).length;
   const feasibleRate = iterationsActuallyUsed > 0 ? feasibleCount / iterationsActuallyUsed : 0;
 
-  const onTimeCount = validResults.filter((r) => r.scheduleUtilization <= 1).length;
+  const onTimeCount = validResults.filter(
+    (r) => (r.computed.scheduleUtilization ?? (r as any).scheduleUtilization ?? 0) <= 1
+  ).length;
   const probabilityOnTime = iterationsActuallyUsed > 0 ? onTimeCount / iterationsActuallyUsed : 0;
 
-  const withinBudgetCount = validResults.filter((r) => r.budgetUtilization <= 1).length;
+  const withinBudgetCount = validResults.filter(
+    (r) => (r.computed.budgetUtilization ?? (r as any).budgetUtilization ?? 0) <= 1
+  ).length;
   const probabilityWithinBudget =
     iterationsActuallyUsed > 0 ? withinBudgetCount / iterationsActuallyUsed : 0;
 
-  const estimatedTimeWeeksValues = validResults.map((r) => r.estimatedTimeWeeks);
-  const effectiveHeadcountValues = validResults.map((r) => r.effectiveHeadcount);
-  const actualCostValues = validResults.map((r) => r.actualCost);
-  const budgetUtilizationValues = validResults.map((r) => r.budgetUtilization);
-  const scheduleUtilizationValues = validResults.map((r) => r.scheduleUtilization);
+  const estimatedTimeWeeksValues = validResults.map(
+    (r) => r.computed.estimatedTimeWeeks ?? (r as any).estimatedTimeWeeks ?? 0
+  );
+  const effectiveHeadcountValues = validResults.map(
+    (r) => r.computed.effectiveHeadcount ?? (r as any).effectiveHeadcount ?? 0
+  );
+  const actualCostValues = validResults.map(
+    (r) => r.computed.actualCost ?? (r as any).actualCost ?? 0
+  );
+  const budgetUtilizationValues = validResults.map(
+    (r) => r.computed.budgetUtilization ?? (r as any).budgetUtilization ?? 0
+  );
+  const scheduleUtilizationValues = validResults.map(
+    (r) => r.computed.scheduleUtilization ?? (r as any).scheduleUtilization ?? 0
+  );
   const riskScoreValues = validResults.map((r) => r.riskScore);
+
+  const costSummary = summarizeDistribution(actualCostValues, bucketCount);
+  const timeSummary = summarizeDistribution(estimatedTimeWeeksValues, bucketCount);
+  const riskSummary = summarizeDistribution(riskScoreValues, bucketCount);
+
+  // Finalize convergence checkpoints: guarantee final checkpoint matches overall mean exactly
+  let finalizedConvergence: Array<{ iteration: number; runningMean: number }> | undefined = undefined;
+  if (checkpointEvery && checkpointEvery > 0 && iterationsActuallyUsed > 0) {
+    const overallMean =
+      targetMetric === "actualCost"
+        ? costSummary.mean
+        : targetMetric === "riskScore"
+        ? riskSummary.mean
+        : targetMetric === "estimatedTimeWeeks"
+        ? timeSummary.mean
+        : runningTargetMetricSum / iterationsActuallyUsed;
+
+    if (
+      convergence.length === 0 ||
+      convergence[convergence.length - 1]!.iteration !== iterationsActuallyUsed
+    ) {
+      convergence.push({
+        iteration: iterationsActuallyUsed,
+        runningMean: overallMean,
+      });
+    } else {
+      convergence[convergence.length - 1]!.runningMean = overallMean;
+    }
+    finalizedConvergence = convergence;
+  }
+
+  // Representative trial sampling for scatter plotting (systematic evenly-spaced sampling)
+  let trialSample: Array<{ actualCost: number; estimatedTimeWeeks: number; feasible: boolean }> | undefined = undefined;
+  if (options?.sampleTrials?.count && options.sampleTrials.count > 0 && iterationsActuallyUsed > 0) {
+    const sampleCount = Math.min(options.sampleTrials.count, iterationsActuallyUsed);
+    trialSample = [];
+    const step = iterationsActuallyUsed / sampleCount;
+    for (let i = 0; i < sampleCount; i++) {
+      const idx = Math.min(iterationsActuallyUsed - 1, Math.floor(i * step));
+      const res = validResults[idx]!;
+      trialSample.push({
+        actualCost: res.computed.actualCost ?? (res as any).actualCost ?? 0,
+        estimatedTimeWeeks: res.computed.estimatedTimeWeeks ?? (res as any).estimatedTimeWeeks ?? 0,
+        feasible: res.feasible,
+      });
+    }
+  }
 
   return {
     iterationsRequested,
@@ -458,11 +482,13 @@ export function runMonteCarloSimulation(
     feasibilityRate: feasibleRate,
     probabilityOnTime,
     probabilityWithinBudget,
-    estimatedTimeWeeks: summarizeDistribution(estimatedTimeWeeksValues, bucketCount),
+    estimatedTimeWeeks: timeSummary,
     effectiveHeadcount: summarizeDistribution(effectiveHeadcountValues, bucketCount),
-    actualCost: summarizeDistribution(actualCostValues, bucketCount),
+    actualCost: costSummary,
     budgetUtilization: summarizeDistribution(budgetUtilizationValues, bucketCount),
     scheduleUtilization: summarizeDistribution(scheduleUtilizationValues, bucketCount),
-    riskScore: summarizeDistribution(riskScoreValues, bucketCount),
+    riskScore: riskSummary,
+    ...(finalizedConvergence ? { convergence: finalizedConvergence } : {}),
+    ...(trialSample ? { trialSample } : {}),
   };
 }

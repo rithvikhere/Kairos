@@ -14,7 +14,7 @@ import {
  */
 export function buildTemplateFallbackExplanation(diff: ScenarioDiff): string {
   const risk = diff.outputDiff.riskScore;
-  const feas = diff.outputDiff.feasible.changed ? "changed" : "did not change";
+  const feas = diff.outputDiff.feasible?.changed ? "changed" : "did not change";
 
   const lines: string[] = [
     `Risk moved from ${risk.from} to ${risk.to} (${risk.direction}). Feasibility ${feas}. Contributing changes, largest impact first:`,
@@ -22,9 +22,11 @@ export function buildTemplateFallbackExplanation(diff: ScenarioDiff): string {
 
   for (const row of diff.attribution) {
     const input = diff.inputDiff[row.field];
-    lines.push(
-      `- ${row.field}: ${input.from} → ${input.to} (${row.isolatedRiskContribution} points of risk impact)`
-    );
+    if (input) {
+      lines.push(
+        `- ${row.field}: ${input.from} → ${input.to} (${row.isolatedRiskContribution} points of risk impact)`
+      );
+    }
   }
 
   return lines.join("\n");

@@ -1,8 +1,9 @@
 import { z } from "zod";
-import type { ScenarioInputs } from "../domain/types.js";
+import type { ConstraintKey, ScenarioInputs } from "../domain/types.js";
 import type { ScenarioIntentDelta } from "./types.js";
 import { _aiConnectorComplete } from "./client.js";
 import {
+  ALL_15_CONSTRAINT_KEYS,
   INTENT_PARSING_SYSTEM_PROMPT,
   SCENARIO_INTENT_DELTA_SCHEMA,
   buildIntentParsingUserPrompt,
@@ -13,21 +14,14 @@ const DeltaSpecSchema = z.object({
   value: z.number(),
 });
 
-const RawIntentDeltaSchema = z
-  .object({
-    budget: DeltaSpecSchema.nullable().optional(),
-    headcount: DeltaSpecSchema.nullable().optional(),
-    deadlineWeeks: DeltaSpecSchema.nullable().optional(),
-    scope: DeltaSpecSchema.nullable().optional(),
-  })
-  .strict();
+const shape: Record<string, z.ZodTypeAny> = {};
+for (const key of ALL_15_CONSTRAINT_KEYS) {
+  shape[key] = DeltaSpecSchema.nullable().optional();
+}
+const RawIntentDeltaSchema = z.object(shape).strict();
 
 /**
- * Parses natural language into a structured ScenarioIntentDelta.
- *
- * Uses OpenAI-style Structured Outputs / JSON schema mode to constrain the response.
- * Throws AiUnavailableError if no AI provider is available.
- * Throws a clear Error if the model output cannot be parsed or validated.
+ * Parses natural language into a structured ScenarioIntentDelta across 15 constraints.
  */
 export async function parseScenarioIntent(
   freeText: string,
@@ -57,10 +51,11 @@ export async function parseScenarioIntent(
   }
 
   const delta: ScenarioIntentDelta = {};
-  if (result.data.budget) delta.budget = result.data.budget;
-  if (result.data.headcount) delta.headcount = result.data.headcount;
-  if (result.data.deadlineWeeks) delta.deadlineWeeks = result.data.deadlineWeeks;
-  if (result.data.scope) delta.scope = result.data.scope;
+  for (const [k, v] of Object.entries(result.data)) {
+    if (v && ALL_15_CONSTRAINT_KEYS.includes(k as ConstraintKey)) {
+      delta[k as ConstraintKey] = v;
+    }
+  }
 
   return delta;
 }

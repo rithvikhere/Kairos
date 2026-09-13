@@ -1,72 +1,108 @@
 /**
- * Core domain types for the deterministic simulation engine.
+ * Core domain types for Phase 8's uniform 15-constraint simulation model.
  *
- * These types are intentionally free of any UI, database, or AI concerns —
- * Phase 1 is pure TypeScript math. Everything here should be serializable
- * to/from JSON without loss, since later phases (DB storage, diffing, API
- * responses) all round-trip through these shapes.
+ * This replaces the previous fixed 4-field ScenarioInputs (budget, headcount,
+ * deadlineWeeks, scope) with a uniform 15-key, all-optional constraint dictionary.
  */
 
 /**
- * The levers a user can pull when defining a scenario.
+ * The 15 uniform constraint keys supported by Kairos.
  *
- * `scope` is optional because most scenarios compare different resourcing
- * choices against a *fixed* body of work. If omitted, it defaults to
- * DEFAULT_SCOPE_PERSON_WEEKS (see constants.ts) so callers don't have to
- * think about it until they actually want to model "the project got bigger
- * or smaller."
+ * Core Resourcing:
+ * - headcount: team headcount (people)
+ * - budget: total project budget ($)
+ * - deadlineWeeks: target delivery timeline (weeks)
+ * - scope: estimated total work (person-weeks)
+ *
+ * Team Factors:
+ * - teamSeniorityMix: fraction of team that is senior (0.0–1.0)
+ * - attritionRisk: expected attrition rate over project (0.0–1.0)
+ * - teamFamiliarity: fraction of team familiar with tech/domain (0.0–1.0)
+ *
+ * External Factors:
+ * - externalDependencyCount: number of external system/vendor dependencies
+ * - vendorLeadTimeWeeks: procurement lead time in weeks
+ * - regulatoryComplexity: subjective compliance bar (0–10)
+ *
+ * Process Factors:
+ * - technicalDebtLevel: code/system debt severity (0–10)
+ * - scopeVolatility: expected requirements volatility percentage (0–100%)
+ * - distributedTeamOverhead: number of distinct physical/geographic sites (>= 1)
+ * - qualityRigor: required testing and validation bar (0–10)
+ * - stakeholderCount: count of distinct sign-off stakeholder groups
+ */
+export type ConstraintKey =
+  | "headcount"
+  | "budget"
+  | "deadlineWeeks"
+  | "scope"
+  | "teamSeniorityMix"
+  | "attritionRisk"
+  | "externalDependencyCount"
+  | "technicalDebtLevel"
+  | "scopeVolatility"
+  | "distributedTeamOverhead"
+  | "vendorLeadTimeWeeks"
+  | "regulatoryComplexity"
+  | "qualityRigor"
+  | "stakeholderCount"
+  | "teamFamiliarity";
+
+/**
+ * Individual constraint configuration.
+ */
+export interface ConstraintSetting {
+  /** Whether this constraint is active for simulation evaluation. */
+  enabled: boolean;
+  /** Concrete scalar numeric value for the constraint. */
+  value: number;
+}
+
+/**
+ * Uniform inputs for deterministic simulation: an all-optional dictionary of constraints.
  */
 export interface ScenarioInputs {
-  /** Total budget available, in dollars. Must be > 0. */
-  budget: number;
-  /** Number of people on the team. Must be > 0. */
-  headcount: number;
-  /** Time allowed to deliver, in weeks. Must be > 0. */
-  deadlineWeeks: number;
-  /**
-   * Total effort required to complete the work, in person-weeks.
-   * Defaults to DEFAULT_SCOPE_PERSON_WEEKS if omitted.
-   */
-  scope?: number;
-}
-
-/** A ScenarioInputs with every optional field resolved to a concrete value. */
-export type ResolvedScenarioInputs = Required<ScenarioInputs>;
-
-/** Breakdown of the 0–100 risk score into its three contributing factors. */
-export interface RiskBreakdown {
-  /** Risk from the schedule being tight or blown, 0–100. */
-  scheduleRisk: number;
-  /** Risk from the budget being tight or blown, 0–100. */
-  budgetRisk: number;
-  /** Risk from the team being too small (key-person risk) or too large
-   *  (coordination overhead), 0–100. */
-  staffingRisk: number;
+  constraints: Partial<Record<ConstraintKey, ConstraintSetting>>;
 }
 
 /**
- * The full, deterministic output of simulating one scenario.
+ * Optional breakdown of the original 3 risk factors for backwards-compatible display.
+ */
+export interface RiskBreakdown {
+  scheduleRisk?: number;
+  budgetRisk?: number;
+  staffingRisk?: number;
+  [key: string]: number | undefined;
+}
+
+/**
+ * The full deterministic simulation result.
  *
- * Every number here is traceable to a specific formula in simulation.ts —
- * nothing is invented or AI-generated. This is the "credibility layer":
- * later phases (Monte Carlo, AI explanation) build on top of this but never
- * replace it.
+ * Every output declares its own prerequisite constraints. If any prerequisite is
+ * missing or disabled, the output is recorded in `notComputed` with a reason string.
+ * All computed outputs (including cost, schedule, utilizations, and all active risk
+ * dimensions) live in `computed`.
+ *
+ * `riskScore` is a renormalized blend across only the computed risk dimensions.
+ * `feasible` is preserved (`riskScore < FEASIBILITY_RISK_THRESHOLD`).
  */
 export interface SimulationResult {
-  /** Estimated calendar time to complete the scope, in weeks. */
-  estimatedTimeWeeks: number;
-  /** Headcount adjusted for coordination overhead (see teamEfficiency). */
-  effectiveHeadcount: number;
-  /** True cost required to deliver the scope with this headcount/time. */
-  actualCost: number;
-  /** actualCost / budget. 1.0 = exactly on budget, >1 = over budget. */
-  budgetUtilization: number;
-  /** estimatedTimeWeeks / deadlineWeeks. 1.0 = exactly on time, >1 = late. */
-  scheduleUtilization: number;
-  /** Composite risk score, 0 (safe) to 100 (very risky). */
+  /** Map of output names to computed numeric values. */
+  computed: Partial<Record<string, number>>;
+  /** List of output names that were omitted due to missing constraints, with reasons. */
+  notComputed: string[];
+  /** The set of constraints that were active (enabled: true) for this simulation. */
+  activeConstraints: ConstraintKey[];
+  /** Composite risk score (0-100) renormalized across only computed risk dimensions. */
   riskScore: number;
-  /** The three components that were combined into riskScore. */
-  riskBreakdown: RiskBreakdown;
-  /** True if riskScore is below FEASIBILITY_RISK_THRESHOLD. */
+  /** True if riskScore < FEASIBILITY_RISK_THRESHOLD (50). */
   feasible: boolean;
+  /** Backwards-compatible view of the core risk dimensions if computed. */
+  riskBreakdown?: Partial<RiskBreakdown>;
+  /** Backwards-compatible optional accessors for core outputs if computed. */
+  estimatedTimeWeeks?: number;
+  effectiveHeadcount?: number;
+  actualCost?: number;
+  budgetUtilization?: number;
+  scheduleUtilization?: number;
 }

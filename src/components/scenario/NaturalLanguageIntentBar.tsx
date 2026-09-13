@@ -116,57 +116,48 @@ export const NaturalLanguageIntentBar: React.FC<NaturalLanguageIntentBarProps> =
 
             {/* Delta Chips */}
             <div className="flex flex-wrap gap-2">
-              {parsedResult.delta.budget && (
-                <div className="px-3 py-1.5 rounded-lg border border-accent/30 bg-accent/10 text-xs text-ink">
-                  <span className="font-semibold text-accent">Budget:</span>{" "}
-                  {parsedResult.delta.budget.type === "percent"
-                    ? `${parsedResult.delta.budget.value > 0 ? "+" : ""}${parsedResult.delta.budget.value}%`
-                    : parsedResult.delta.budget.type === "delta"
-                    ? `${parsedResult.delta.budget.value > 0 ? "+" : ""}$${parsedResult.delta.budget.value.toLocaleString()}`
-                    : `$${parsedResult.delta.budget.value.toLocaleString()}`}
-                  <span className="text-ink/50 ml-1">
-                    → ${parsedResult.resolvedInputs.budget.toLocaleString()}
-                  </span>
-                </div>
-              )}
+              {Object.entries(parsedResult.delta).map(([k, delta]) => {
+                if (!delta) return null;
+                const key = k;
+                const resolvedVal = (parsedResult.resolvedInputs.constraints as any)?.[key]?.value;
+                const formattedKey = key
+                  .replace(/([A-Z])/g, " $1")
+                  .replace(/^./, (str) => str.toUpperCase());
 
-              {parsedResult.delta.headcount && (
-                <div className="px-3 py-1.5 rounded-lg border border-accent/30 bg-accent/10 text-xs text-ink">
-                  <span className="font-semibold text-accent">Headcount:</span>{" "}
-                  {parsedResult.delta.headcount.type === "delta"
-                    ? `${parsedResult.delta.headcount.value > 0 ? "+" : ""}${parsedResult.delta.headcount.value}`
-                    : parsedResult.delta.headcount.type === "percent"
-                    ? `${parsedResult.delta.headcount.value > 0 ? "+" : ""}${parsedResult.delta.headcount.value}%`
-                    : `${parsedResult.delta.headcount.value}`}
-                  <span className="text-ink/50 ml-1">
-                    → {parsedResult.resolvedInputs.headcount} people
-                  </span>
-                </div>
-              )}
+                const isDollar = key === "budget";
+                const prefix = isDollar ? "$" : "";
+                const unit =
+                  key === "deadlineWeeks"
+                    ? " wks"
+                    : key === "headcount"
+                    ? " people"
+                    : key === "scope"
+                    ? " pw"
+                    : "";
 
-              {parsedResult.delta.deadlineWeeks && (
-                <div className="px-3 py-1.5 rounded-lg border border-accent/30 bg-accent/10 text-xs text-ink">
-                  <span className="font-semibold text-accent">Deadline:</span>{" "}
-                  {parsedResult.delta.deadlineWeeks.type === "delta"
-                    ? `${parsedResult.delta.deadlineWeeks.value > 0 ? "+" : ""}${parsedResult.delta.deadlineWeeks.value} wks`
-                    : `${parsedResult.delta.deadlineWeeks.value} wks`}
-                  <span className="text-ink/50 ml-1">
-                    → {parsedResult.resolvedInputs.deadlineWeeks} weeks
-                  </span>
-                </div>
-              )}
-
-              {parsedResult.delta.scope && (
-                <div className="px-3 py-1.5 rounded-lg border border-accent/30 bg-accent/10 text-xs text-ink">
-                  <span className="font-semibold text-accent">Scope:</span>{" "}
-                  {parsedResult.delta.scope.type === "delta"
-                    ? `${parsedResult.delta.scope.value > 0 ? "+" : ""}${parsedResult.delta.scope.value} pw`
-                    : `${parsedResult.delta.scope.value} pw`}
-                  <span className="text-ink/50 ml-1">
-                    → {parsedResult.resolvedInputs.scope} person-weeks
-                  </span>
-                </div>
-              )}
+                return (
+                  <div
+                    key={key}
+                    className="px-3 py-1.5 rounded-lg border border-accent/30 bg-accent/10 text-xs text-ink"
+                  >
+                    <span className="font-semibold text-accent">{formattedKey}:</span>{" "}
+                    {delta.type === "percent"
+                      ? `${delta.value > 0 ? "+" : ""}${delta.value}%`
+                      : delta.type === "delta"
+                      ? `${delta.value > 0 ? "+" : ""}${prefix}${delta.value.toLocaleString()}${unit}`
+                      : `${prefix}${delta.value.toLocaleString()}${unit}`}
+                    {resolvedVal !== undefined && (
+                      <span className="text-ink/50 ml-1">
+                        → {prefix}
+                        {typeof resolvedVal === "number"
+                          ? resolvedVal.toLocaleString()
+                          : String(resolvedVal)}
+                        {unit}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             {/* Confirmation Controls */}

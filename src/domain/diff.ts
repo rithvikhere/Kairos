@@ -1,33 +1,20 @@
 /**
- * Scenario diffing and attribution engine.
+ * Scenario diffing and attribution engine for Phase 8.
  *
- * This module compares two saved scenarios (ScenarioRecord) at three levels:
- * 1. Input deltas (what levers changed, resolving distributions to representative central numbers)
- * 2. Output deltas (deterministic cost, schedule, utilizations, risk breakdown, feasibility;
- *    plus Monte Carlo on-time, within-budget, and feasibility rates when available)
- * 3. Attribution analysis (isolating which changed input drove the observed risk score delta)
- *
- * ============================================================================
- * KNOWN LIMITATION — NON-ADDITIVE RISK ATTRIBUTION:
- * Because simulate()'s risk model is non-additive (due to non-linear team efficiency
- * under Brooks's Law, utilization clamping, and piecewise risk weights), the sum
- * of individual isolatedRiskContribution values will NOT generally equal
- * outputDiff.riskScore.delta when more than one input has changed.
- * There is a real interaction effect between variables (e.g., changing headcount
- * shifts effective throughput non-linearly, interacting with deadline and budget).
- * Contributions are kept as pure, un-normalized single-variable probe results
- * and must NEVER be rescaled or normalized to artificially force them to sum to
- * the total delta, as that would misrepresent the underlying mathematical model.
- * ============================================================================
+ * Compares two saved scenarios (ScenarioRecord) with dynamic 15-constraint dictionaries:
+ * 1. Input deltas across active constraints shared by both scenarios.
+ * 2. Output deltas across computed metrics shared by both scenarios.
+ * 3. Surface constraints/outputs present in only one scenario as `onlyInA` / `onlyInB`.
+ * 4. Single-lever risk attribution: iterates across active constraints changed in both scenarios,
+ *    re-evaluating simulate() with one changed lever at a time to measure isolated risk impact.
  */
 
 import { DEFAULT_SCOPE_PERSON_WEEKS } from "./constants.js";
 import { simulate } from "./simulation.js";
-import { normalizeDistribution } from "./monteCarlo.js";
+import { normalizeDistribution, normalizeUncertainInputs } from "./monteCarlo.js";
 import type { Distribution, UncertainScenarioInputs } from "./monteCarlo.js";
-import type { ScenarioInputs } from "./types.js";
+import type { ConstraintKey, ScenarioInputs } from "./types.js";
 import type { ScenarioRecord } from "../data/schema.js";
-import { getScenario } from "../data/db.js";
 
 /**
  * Metric delta between two values.
@@ -41,31 +28,16 @@ export interface FieldDelta<T = number> {
 }
 
 /**
- * Deltas across all scenario inputs, resolved to representative scalar numbers.
+ * Deltas across active scenario inputs evaluated in both scenarios.
  */
-export interface InputDiff {
-  budget: FieldDelta;
-  headcount: FieldDelta;
-  deadlineWeeks: FieldDelta;
-  scope: FieldDelta;
-}
+export type InputDiff = Partial<Record<string, FieldDelta<number>>>;
 
 /**
- * Deltas across all deterministic simulation outputs and feasibility status.
+ * Deltas across computed outputs evaluated in both scenarios, plus feasibility flag.
  */
 export interface OutputDiff {
-  estimatedTimeWeeks: FieldDelta;
-  effectiveHeadcount: FieldDelta;
-  actualCost: FieldDelta;
-  budgetUtilization: FieldDelta;
-  scheduleUtilization: FieldDelta;
-  riskScore: FieldDelta;
-  riskBreakdown: {
-    scheduleRisk: FieldDelta;
-    budgetRisk: FieldDelta;
-    staffingRisk: FieldDelta;
-  };
-  feasible: { from: boolean; to: boolean; changed: boolean };
+  [key: string]: any;
+  feasible?: { from: boolean; to: boolean; changed: boolean };
 }
 
 /**
@@ -81,7 +53,7 @@ export interface MonteCarloDiff {
  * Attribution of risk change to an isolated input modification.
  */
 export interface InputAttribution {
-  field: keyof InputDiff;
+  field: string;
   isolatedRiskScore: number;
   isolatedRiskContribution: number; // isolatedRiskScore - scenarioA's actual riskScore
 }
@@ -96,33 +68,24 @@ export interface ScenarioDiff {
   outputDiff: OutputDiff;
   monteCarloDiff: MonteCarloDiff | null;
   /**
-   * One row per CHANGED input, sorted by |isolatedRiskContribution| descending.
-   *
-   * KNOWN LIMITATION: Because simulate()'s risk model is non-additive (non-linear
-   * team efficiency diminishing returns and piecewise risk curves), the sum of
-   * isolatedRiskContribution values will NOT generally equal outputDiff.riskScore.delta
-   * when more than one input changed. These values are intentionally not rescaled.
+   * One row per CHANGED active constraint, sorted by |isolatedRiskContribution| descending.
    */
   attribution: InputAttribution[];
+  /** Constraints or outputs evaluated only in scenario A. */
+  onlyInA: string[];
+  /** Constraints or outputs evaluated only in scenario B. */
+  onlyInB: string[];
 }
 
 /**
  * Resolves a concrete representative scalar number from a number or Distribution specification.
- *
- * Plain numbers resolve to themselves.
- * Distributions resolve to their representative central tendencies:
- * - "fixed": `value`
- * - "normal": `mean`
- * - "uniform": `(min + max) / 2`
- * If undefined (e.g. omitted optional scope), defaults to DEFAULT_SCOPE_PERSON_WEEKS.
- *
- * Reuses normalizeDistribution() from monteCarlo.ts.
  */
 export function resolveRepresentativeNumber(
-  input: number | Distribution | undefined
+  input: number | Distribution | undefined,
+  fallback: number = DEFAULT_SCOPE_PERSON_WEEKS
 ): number {
   if (input === undefined) {
-    return DEFAULT_SCOPE_PERSON_WEEKS;
+    return fallback;
   }
   const dist = normalizeDistribution(input);
   switch (dist.kind) {
@@ -137,8 +100,6 @@ export function resolveRepresentativeNumber(
 
 /**
  * Shared helper producing a FieldDelta from a numeric from/to pair.
- *
- * Computes delta, percentChange (null if from === 0), and direction.
  */
 export function fieldwiseDelta(from: number, to: number): FieldDelta {
   let delta = to - from;
@@ -173,91 +134,142 @@ export function fieldwiseDelta(from: number, to: number): FieldDelta {
 }
 
 /**
- * Pure function to diff two already-loaded ScenarioRecord entities.
- *
- * Compares inputs (resolved to representative numbers), deterministic outputs,
- * Monte Carlo outputs (if both scenarios have them), and computes isolated single-variable
- * risk attributions for each changed input parameter.
+ * Pure function to diff two ScenarioRecord entities.
  */
 export function diffScenarios(
-  scenarioA: ScenarioRecord,
-  scenarioB: ScenarioRecord
+  scenarioA: ScenarioRecord | { inputs: UncertainScenarioInputs | ScenarioInputs; [key: string]: any },
+  scenarioB: ScenarioRecord | { inputs: UncertainScenarioInputs | ScenarioInputs; [key: string]: any }
 ): ScenarioDiff {
-  // a. inputDiff on resolved representative numbers
-  const resolvedA = {
-    budget: resolveRepresentativeNumber(scenarioA.inputs.budget),
-    headcount: resolveRepresentativeNumber(scenarioA.inputs.headcount),
-    deadlineWeeks: resolveRepresentativeNumber(scenarioA.inputs.deadlineWeeks),
-    scope: resolveRepresentativeNumber(scenarioA.inputs.scope),
-  };
+  const normA = normalizeUncertainInputs(scenarioA.inputs);
+  const normB = normalizeUncertainInputs(scenarioB.inputs);
 
-  const resolvedB = {
-    budget: resolveRepresentativeNumber(scenarioB.inputs.budget),
-    headcount: resolveRepresentativeNumber(scenarioB.inputs.headcount),
-    deadlineWeeks: resolveRepresentativeNumber(scenarioB.inputs.deadlineWeeks),
-    scope: resolveRepresentativeNumber(scenarioB.inputs.scope),
-  };
+  const inputsA = normA?.constraints || {};
+  const inputsB = normB?.constraints || {};
 
-  const inputDiff: InputDiff = {
-    budget: fieldwiseDelta(resolvedA.budget, resolvedB.budget),
-    headcount: fieldwiseDelta(resolvedA.headcount, resolvedB.headcount),
-    deadlineWeeks: fieldwiseDelta(resolvedA.deadlineWeeks, resolvedB.deadlineWeeks),
-    scope: fieldwiseDelta(resolvedA.scope, resolvedB.scope),
-  };
+  const activeA = (Object.keys(inputsA) as ConstraintKey[]).filter(
+    (k) => inputsA[k]?.enabled === true
+  );
+  const activeB = (Object.keys(inputsB) as ConstraintKey[]).filter(
+    (k) => inputsB[k]?.enabled === true
+  );
 
-  // b. outputDiff across deterministic outputs
+  const activeSetA = new Set(activeA);
+  const activeSetB = new Set(activeB);
+
+  const commonConstraints = activeA.filter((k) => activeSetB.has(k));
+  const constraintsOnlyInA = activeA.filter((k) => !activeSetB.has(k));
+  const constraintsOnlyInB = activeB.filter((k) => !activeSetA.has(k));
+
+  // 1. inputDiff across common active constraints
+  const inputDiff: InputDiff = {};
+  for (const key of commonConstraints) {
+    const valA = resolveRepresentativeNumber(inputsA[key]!.value);
+    const valB = resolveRepresentativeNumber(inputsB[key]!.value);
+    inputDiff[key] = fieldwiseDelta(valA, valB);
+  }
+
+  // 2. outputDiff across common computed outputs
   const outA = scenarioA.deterministic_output;
   const outB = scenarioB.deterministic_output;
 
-  const outputDiff: OutputDiff = {
-    estimatedTimeWeeks: fieldwiseDelta(outA.estimatedTimeWeeks, outB.estimatedTimeWeeks),
-    effectiveHeadcount: fieldwiseDelta(outA.effectiveHeadcount, outB.effectiveHeadcount),
-    actualCost: fieldwiseDelta(outA.actualCost, outB.actualCost),
-    budgetUtilization: fieldwiseDelta(outA.budgetUtilization, outB.budgetUtilization),
-    scheduleUtilization: fieldwiseDelta(outA.scheduleUtilization, outB.scheduleUtilization),
-    riskScore: fieldwiseDelta(outA.riskScore, outB.riskScore),
-    riskBreakdown: {
-      scheduleRisk: fieldwiseDelta(outA.riskBreakdown.scheduleRisk, outB.riskBreakdown.scheduleRisk),
-      budgetRisk: fieldwiseDelta(outA.riskBreakdown.budgetRisk, outB.riskBreakdown.budgetRisk),
-      staffingRisk: fieldwiseDelta(outA.riskBreakdown.staffingRisk, outB.riskBreakdown.staffingRisk),
-    },
-    feasible: {
-      from: outA.feasible,
-      to: outB.feasible,
-      changed: outA.feasible !== outB.feasible,
-    },
+  const compA = outA.computed || (outA as any);
+  const compB = outB.computed || (outB as any);
+
+  const compKeysA = Object.keys(compA).filter((k) => typeof compA[k] === "number");
+  const compKeysB = Object.keys(compB).filter((k) => typeof compB[k] === "number");
+
+  const compSetA = new Set(compKeysA);
+  const compSetB = new Set(compKeysB);
+
+  const commonOutputs = compKeysA.filter((k) => compSetB.has(k));
+  const outputsOnlyInA = compKeysA.filter((k) => !compSetB.has(k));
+  const outputsOnlyInB = compKeysB.filter((k) => !compSetA.has(k));
+
+  const outputDiff: OutputDiff = {};
+  for (const key of commonOutputs) {
+    outputDiff[key] = fieldwiseDelta(compA[key]!, compB[key]!);
+  }
+
+  // Always diff overall riskScore and feasibility
+  outputDiff.riskScore = fieldwiseDelta(outA.riskScore, outB.riskScore);
+  outputDiff.feasible = {
+    from: outA.feasible,
+    to: outB.feasible,
+    changed: outA.feasible !== outB.feasible,
   };
 
-  // c. monteCarloDiff = null if either scenario's monte_carlo_output is null
+  // Backwards compatibility for legacy test assertions checking outputDiff.riskBreakdown
+  const schedA = compA.scheduleRisk ?? outA.riskBreakdown?.scheduleRisk;
+  const schedB = compB.scheduleRisk ?? outB.riskBreakdown?.scheduleRisk;
+  const budA = compA.budgetRisk ?? outA.riskBreakdown?.budgetRisk;
+  const budB = compB.budgetRisk ?? outB.riskBreakdown?.budgetRisk;
+  const stfA = compA.staffingRisk ?? outA.riskBreakdown?.staffingRisk;
+  const stfB = compB.staffingRisk ?? outB.riskBreakdown?.staffingRisk;
+
+  if (
+    schedA !== undefined &&
+    schedB !== undefined &&
+    budA !== undefined &&
+    budB !== undefined &&
+    stfA !== undefined &&
+    stfB !== undefined
+  ) {
+    outputDiff.riskBreakdown = {
+      scheduleRisk: fieldwiseDelta(schedA, schedB),
+      budgetRisk: fieldwiseDelta(budA, budB),
+      staffingRisk: fieldwiseDelta(stfA, stfB),
+    };
+  }
+
+  // 3. monteCarloDiff
   let monteCarloDiff: MonteCarloDiff | null = null;
   if (scenarioA.monte_carlo_output !== null && scenarioB.monte_carlo_output !== null) {
     const mcA = scenarioA.monte_carlo_output;
     const mcB = scenarioB.monte_carlo_output;
     monteCarloDiff = {
       probabilityOnTime: fieldwiseDelta(mcA.probabilityOnTime, mcB.probabilityOnTime),
-      probabilityWithinBudget: fieldwiseDelta(mcA.probabilityWithinBudget, mcB.probabilityWithinBudget),
+      probabilityWithinBudget: fieldwiseDelta(
+        mcA.probabilityWithinBudget,
+        mcB.probabilityWithinBudget
+      ),
       feasibleRate: fieldwiseDelta(mcA.feasibleRate, mcB.feasibleRate),
     };
   }
 
-  // d. changedFields: every key in inputDiff where direction !== "unchanged"
-  const inputKeys: Array<keyof InputDiff> = ["budget", "headcount", "deadlineWeeks", "scope"];
-  const changedFields = inputKeys.filter((field) => inputDiff[field].direction !== "unchanged");
+  // 4. onlyInA and onlyInB
+  const onlyInA = [
+    ...constraintsOnlyInA.map((c) => `constraint:${c}`),
+    ...outputsOnlyInA.map((o) => `output:${o}`),
+  ];
+  const onlyInB = [
+    ...constraintsOnlyInB.map((c) => `constraint:${c}`),
+    ...outputsOnlyInB.map((o) => `output:${o}`),
+  ];
 
-  // e. Attribution: probe UncertainScenarioInputs replacing only one field at a time
-  const attribution: InputAttribution[] = changedFields.map((field) => {
-    const probeUncertain: UncertainScenarioInputs = {
-      ...scenarioA.inputs,
-      [field]: scenarioB.inputs[field],
+  // 5. Attribution: changed active constraints in both scenarios
+  const changedConstraints = commonConstraints.filter(
+    (field) => inputDiff[field]?.direction !== "unchanged"
+  );
+
+  const attribution: InputAttribution[] = changedConstraints.map((field) => {
+    // Construct probe: scenario A base inputs, with single constraint replaced from scenario B
+    const probeConstraints: Partial<Record<ConstraintKey, { enabled: boolean; value: number }>> = {};
+
+    for (const k of Object.keys(inputsA) as ConstraintKey[]) {
+      if (inputsA[k]) {
+        probeConstraints[k] = {
+          enabled: inputsA[k]!.enabled,
+          value: resolveRepresentativeNumber(inputsA[k]!.value),
+        };
+      }
+    }
+
+    probeConstraints[field] = {
+      enabled: true,
+      value: resolveRepresentativeNumber(inputsB[field]!.value),
     };
 
-    const probeInputs: ScenarioInputs = {
-      budget: resolveRepresentativeNumber(probeUncertain.budget),
-      headcount: resolveRepresentativeNumber(probeUncertain.headcount),
-      deadlineWeeks: resolveRepresentativeNumber(probeUncertain.deadlineWeeks),
-      scope: resolveRepresentativeNumber(probeUncertain.scope),
-    };
-
+    const probeInputs: ScenarioInputs = { constraints: probeConstraints };
     const probeOutcome = simulate(probeInputs);
     const isolatedRiskScore = probeOutcome.riskScore;
     const isolatedRiskContribution = isolatedRiskScore - outA.riskScore;
@@ -269,12 +281,11 @@ export function diffScenarios(
     };
   });
 
-  // f. Sort attribution by |isolatedRiskContribution| descending
+  // Sort attribution by |isolatedRiskContribution| descending
   attribution.sort(
     (a, b) => Math.abs(b.isolatedRiskContribution) - Math.abs(a.isolatedRiskContribution)
   );
 
-  // g. Return the full ScenarioDiff
   return {
     scenarioAId: scenarioA.id,
     scenarioBId: scenarioB.id,
@@ -282,19 +293,19 @@ export function diffScenarios(
     outputDiff,
     monteCarloDiff,
     attribution,
+    onlyInA,
+    onlyInB,
   };
 }
 
 /**
  * Asynchronously loads two scenarios by ID from the database and runs diffScenarios.
- *
- * Throws a clear error if either ID resolves to null.
- * This is the ONLY function in this module that imports from ../data/db.js.
  */
 export async function diffScenariosById(
   scenarioAId: string,
   scenarioBId: string
 ): Promise<ScenarioDiff> {
+  const { getScenario } = await import(/* webpackIgnore: true */ "../data/db.js");
   const scenarioA = await getScenario(scenarioAId);
   if (!scenarioA) {
     throw new Error(`Scenario '${scenarioAId}' not found.`);

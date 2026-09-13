@@ -12,6 +12,7 @@
  */
 
 import { simulate } from "../domain/simulation.js";
+import { DEFAULT_SCOPE_PERSON_WEEKS } from "../domain/constants.js";
 import type { Distribution } from "../domain/monteCarlo.js";
 import type {
   CreateProjectParams,
@@ -56,7 +57,8 @@ function generateId(): string {
 /**
  * Extracts a concrete baseline scalar from a number or Distribution specification.
  */
-function extractBaseline(value: number | Distribution): number {
+function extractBaseline(value: number | Distribution | undefined | null): number {
+  if (value === undefined || value === null) return 0;
   if (typeof value === "number") return value;
   switch (value.kind) {
     case "fixed":
@@ -65,6 +67,8 @@ function extractBaseline(value: number | Distribution): number {
       return value.mean;
     case "uniform":
       return (value.min + value.max) / 2;
+    default:
+      return 0;
   }
 }
 
@@ -384,18 +388,38 @@ export async function saveScenario(params: SaveScenarioParams): Promise<Scenario
   const now = new Date().toISOString();
 
   // Compute deterministic output if omitted
-  const deterministicOutput =
-    params.deterministic_output ??
-    params.deterministicOutput ??
-    simulate({
-      budget: extractBaseline(params.inputs.budget),
-      headcount: extractBaseline(params.inputs.headcount),
-      deadlineWeeks: extractBaseline(params.inputs.deadlineWeeks),
-      scope:
-        params.inputs.scope !== undefined
-          ? extractBaseline(params.inputs.scope)
-          : undefined,
-    });
+  let deterministicOutput = params.deterministic_output ?? params.deterministicOutput;
+  if (!deterministicOutput) {
+    if (params.inputs?.constraints) {
+      const concreteConstraints: Record<string, { enabled: boolean; value: number }> = {};
+      for (const [k, setting] of Object.entries(params.inputs.constraints) as any) {
+        if (setting) {
+          concreteConstraints[k] = {
+            enabled: setting.enabled,
+            value: extractBaseline(setting.value),
+          };
+        }
+      }
+      deterministicOutput = simulate({ constraints: concreteConstraints });
+    } else {
+      const rawInputs = (params.inputs || {}) as any;
+      const hc = extractBaseline(rawInputs.headcount);
+      const dl = extractBaseline(rawInputs.deadlineWeeks);
+      const bg = extractBaseline(rawInputs.budget);
+      const sc =
+        rawInputs.scope !== undefined
+          ? extractBaseline(rawInputs.scope)
+          : DEFAULT_SCOPE_PERSON_WEEKS;
+      deterministicOutput = simulate({
+        constraints: {
+          headcount: { enabled: true, value: hc },
+          deadlineWeeks: { enabled: true, value: dl },
+          budget: { enabled: true, value: bg },
+          scope: { enabled: true, value: sc },
+        },
+      });
+    }
+  }
 
   const record: ScenarioRecord = {
     id,

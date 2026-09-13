@@ -20,7 +20,8 @@ export {
 
 // Phase 1 — Domain Types
 export type {
-  ResolvedScenarioInputs,
+  ConstraintKey,
+  ConstraintSetting,
   RiskBreakdown,
   ScenarioInputs,
   SimulationResult,
@@ -58,6 +59,6 @@ export type {
   MetricDistributionSummary,
   MonteCarloOptions,
   MonteCarloResult,
-  NormalizedUncertainScenarioInputs,
+  UncertainConstraintSetting,
   UncertainScenarioInputs,
 } from "./monteCarlo.js";

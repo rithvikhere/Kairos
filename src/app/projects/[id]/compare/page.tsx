@@ -8,6 +8,7 @@ import { useScenarioDiff, useExplainDiff } from "@/hooks/useScenarioDiff.js";
 import { useScenarios } from "@/hooks/useScenarios.js";
 import { ScenarioDiffTable } from "@/components/diff/ScenarioDiffTable.js";
 import { AttributionBarChart } from "@/components/scenario/AttributionBarChart.js";
+import { SensitivityTornadoChart } from "@/components/scenario/SensitivityTornadoChart.js";
 import { DiffExplanationPanel } from "@/components/diff/DiffExplanationPanel.js";
 import { AnimatedButton } from "@/components/ui/AnimatedButton.js";
 import type { DiffExplanation } from "@/ai/types.js";
@@ -131,6 +132,9 @@ export default function CompareScenariosPage() {
 
           {/* Single-Variable Risk Attribution Chart */}
           <AttributionBarChart attribution={diff.attribution} />
+
+          {/* Phase 8 Sensitivity Tornado Chart */}
+          <SensitivityTornadoChart attribution={diff.attribution} />
 
           {/* Comparative Deltas Table */}
           <ScenarioDiffTable diff={diff} />
