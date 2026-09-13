@@ -77,10 +77,10 @@ function createDefaultConstraints(
   sc: number = 140
 ): Partial<Record<ConstraintKey, ConstraintSetting>> {
   return {
+    scope: { enabled: true, value: sc },
     headcount: { enabled: true, value: hc },
     deadlineWeeks: { enabled: true, value: dl },
     budget: { enabled: true, value: bg },
-    scope: { enabled: true, value: sc },
     teamSeniorityMix: { enabled: false, value: 0.4 },
     attritionRisk: { enabled: false, value: 0.15 },
     teamFamiliarity: { enabled: false, value: 0.6 },
@@ -472,11 +472,19 @@ function ProjectsDashboardContent() {
   };
 
   const handleApplyConstraints = (updated: Partial<Record<ConstraintKey, ConstraintSetting>>) => {
-    setScenarioConstraints(updated);
-    if (updated.headcount?.value !== undefined) setHeadcount(updated.headcount.value);
-    if (updated.deadlineWeeks?.value !== undefined) setDeadlineWeeks(updated.deadlineWeeks.value);
-    if (updated.budget?.value !== undefined) setBudget(updated.budget.value);
-    if (updated.scope?.value !== undefined) setScope(updated.scope.value);
+    // Enforce scope as mandatory core workload anchor
+    const enforced: Partial<Record<ConstraintKey, ConstraintSetting>> = {
+      ...updated,
+      scope: {
+        enabled: true,
+        value: updated.scope?.value ?? scenarioConstraints.scope?.value ?? 140,
+      },
+    };
+    setScenarioConstraints(enforced);
+    if (enforced.headcount?.value !== undefined) setHeadcount(enforced.headcount.value);
+    if (enforced.deadlineWeeks?.value !== undefined) setDeadlineWeeks(enforced.deadlineWeeks.value);
+    if (enforced.budget?.value !== undefined) setBudget(enforced.budget.value);
+    if (enforced.scope?.value !== undefined) setScope(enforced.scope.value);
   };
 
   // Sync active scenario and sliders only when project changes
@@ -519,6 +527,7 @@ function ProjectsDashboardContent() {
   };
 
   const handleToggleConstraint = (key: ConstraintKey) => {
+    if (key === "scope") return; // Scope Effort is mandatory and cannot be disabled
     setScenarioConstraints((prev) => {
       const current = prev[key];
       const isEnabled = current?.enabled ?? false;
@@ -880,11 +889,11 @@ function ProjectsDashboardContent() {
   }, [deadlineWeeks, simulation.estimatedWeeks]);
 
   return (
-    <div className="w-full min-h-screen py-6 sm:py-10 px-3 sm:px-8 flex flex-col items-center justify-center bg-[#f6f4ef] text-[#221f1b]">
-      {/* Outer Browser / Application Window Frame matching specification */}
-      <div className="w-full max-w-6xl rounded-2xl bg-[#faf8f4] border border-[#221f1b]/15 shadow-2xl overflow-hidden flex flex-col">
-        {/* Window Top Chrome Bar */}
-        <div className="flex items-center justify-between px-4 py-3 bg-[#ede9e0] border-b border-[#221f1b]/10 text-xs font-sans text-[#221f1b]/60">
+    <div className="w-full min-h-screen flex flex-col bg-[#faf8f4] text-[#221f1b]">
+      {/* Full Screen Application Panel */}
+      <div className="w-full min-h-screen flex flex-col">
+        {/* Top Window Chrome Bar */}
+        <div className="w-full flex items-center justify-between px-4 sm:px-6 py-2.5 bg-[#ede9e0] border-b border-[#221f1b]/10 text-xs font-sans text-[#221f1b]/60">
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded-full bg-[#221f1b]/20 hover:bg-red-400 transition-colors" />
             <span className="w-3 h-3 rounded-full bg-[#221f1b]/20 hover:bg-amber-400 transition-colors" />
@@ -926,9 +935,9 @@ function ProjectsDashboardContent() {
         </div>
 
         {/* Inner Workspace Grid: Sidebar + Main Content Column */}
-        <div className="grid grid-cols-12 min-h-[640px] bg-[#f6f4ef] text-[#221f1b]">
+        <div className="w-full grid grid-cols-12 flex-1 min-h-[calc(100vh-48px)] bg-[#f6f4ef] text-[#221f1b]">
           {/* Left Sidebar */}
-          <div className="col-span-12 md:col-span-4 lg:col-span-3 border-r border-[#221f1b]/10 bg-[#f1ede4]/75 p-4 flex flex-col justify-between space-y-4">
+          <div className="col-span-12 md:col-span-4 lg:col-span-3 xl:col-span-2 border-r border-[#221f1b]/10 bg-[#f1ede4]/75 p-4 sm:p-5 flex flex-col justify-between space-y-4">
             <div className="space-y-4">
               {/* Project Header & Interactive Dropdown Switcher */}
               <div className="relative pb-3 border-b border-[#221f1b]/10">
@@ -1228,7 +1237,7 @@ function ProjectsDashboardContent() {
           </div>
 
           {/* Main Dashboard Column */}
-          <div className="col-span-12 md:col-span-8 lg:col-span-9 p-5 lg:p-6 space-y-5">
+          <div className="col-span-12 md:col-span-8 lg:col-span-9 xl:col-span-10 p-5 lg:p-7 space-y-6">
             {/* Top Bar Header */}
             <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[#221f1b]/10">
               <div className="flex items-center gap-3">
@@ -1573,14 +1582,23 @@ function ProjectsDashboardContent() {
                                 <span className="font-mono font-bold text-[#2c4356] text-xs">
                                   {displayVal}
                                 </span>
-                                <button
-                                  type="button"
-                                  onClick={() => handleToggleConstraint(meta.key)}
-                                  className="text-[#221f1b]/30 hover:text-[#b5502f] transition-colors p-0.5 rounded hover:bg-[#ede9e0]"
-                                  title={`Disable and remove ${meta.label} from levers`}
-                                >
-                                  <X className="w-3.5 h-3.5" />
-                                </button>
+                                {meta.isMandatory ? (
+                                  <span
+                                    className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#2c4356]/10 text-[#2c4356] font-bold"
+                                    title="Mandatory Core Workload Anchor"
+                                  >
+                                    Anchor
+                                  </span>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleConstraint(meta.key)}
+                                    className="text-[#221f1b]/30 hover:text-[#b5502f] transition-colors p-0.5 rounded hover:bg-[#ede9e0]"
+                                    title={`Disable and remove ${meta.label} from levers`}
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
                               </div>
                             </div>
 
@@ -1670,32 +1688,16 @@ function ProjectsDashboardContent() {
 
                   {/* Probability Metric Cards */}
                   <div className="grid grid-cols-2 gap-2.5 pt-1 text-xs font-sans">
-                    <div className="p-2.5 rounded-xl bg-[#f6f4ef] border border-[#221f1b]/5">
-                      <div className="text-[10px] text-[#221f1b]/60">Probability On-Time</div>
-                      <div
-                        className={`font-mono font-bold text-base mt-0.5 ${
-                          (mcResult ? mcResult.probabilityOnTime * 100 : simulation.probOnTime) >= 70
-                            ? "text-[#8ba888]"
-                            : (mcResult ? mcResult.probabilityOnTime * 100 : simulation.probOnTime) >= 40
-                            ? "text-[#c98a3e]"
-                            : "text-[#b5502f]"
-                        }`}
-                      >
+                    <div className="p-2.5 rounded-xl bg-[#f6f4ef] border border-[#221f1b]/10">
+                      <div className="text-[10px] text-[#221f1b]/70 font-semibold">Probability On-Time</div>
+                      <div className="font-mono font-bold text-lg mt-0.5 text-[#2c4356]">
                         {(mcResult ? mcResult.probabilityOnTime * 100 : simulation.probOnTime).toFixed(1)}%
                       </div>
                     </div>
 
-                    <div className="p-2.5 rounded-xl bg-[#f6f4ef] border border-[#221f1b]/5">
-                      <div className="text-[10px] text-[#221f1b]/60">Within Budget</div>
-                      <div
-                        className={`font-mono font-bold text-base mt-0.5 ${
-                          (mcResult ? mcResult.probabilityWithinBudget * 100 : simulation.probWithinBudget) >= 70
-                            ? "text-[#8ba888]"
-                            : (mcResult ? mcResult.probabilityWithinBudget * 100 : simulation.probWithinBudget) >= 40
-                            ? "text-[#c98a3e]"
-                            : "text-[#b5502f]"
-                        }`}
-                      >
+                    <div className="p-2.5 rounded-xl bg-[#f6f4ef] border border-[#221f1b]/10">
+                      <div className="text-[10px] text-[#221f1b]/70 font-semibold">Within Budget</div>
+                      <div className="font-mono font-bold text-lg mt-0.5 text-[#2c4356]">
                         {(mcResult ? mcResult.probabilityWithinBudget * 100 : simulation.probWithinBudget).toFixed(1)}%
                       </div>
                     </div>
@@ -1705,6 +1707,60 @@ function ProjectsDashboardContent() {
                 {/* 2. Trial Scatter Plot Card */}
                 <div className="rounded-2xl overflow-hidden shadow-xs">
                   <TrialScatterPlot trialSample={mcResult?.trialSample} />
+                </div>
+
+                {/* Dynamic Real-Time Simulation Status / Issue Summary (2-3 lines) */}
+                <div className="p-3.5 rounded-2xl bg-[#faf8f4] border border-[#2c4356]/20 shadow-xs space-y-1.5 font-sans">
+                  <div className="flex items-center gap-2">
+                    {simResult?.feasible ? (
+                      <CheckCircle2 className="w-4 h-4 text-[#2b5336]" />
+                    ) : (
+                      <AlertTriangle className="w-4 h-4 text-[#b5502f]" />
+                    )}
+                    <span className="font-bold text-xs text-[#221f1b]">
+                      {simResult?.feasible
+                        ? "Delivery Status: Plan On Track & Feasible"
+                        : "Delivery Alert: Plan Infeasible Under Current Levers"}
+                    </span>
+                  </div>
+                  <div className="text-[11.5px] text-[#221f1b]/80 leading-relaxed space-y-1">
+                    <p>
+                      • <strong>Schedule:</strong> Estimated delivery is <strong>{simulation.estimatedWeeks.toFixed(1)} weeks</strong>{" "}
+                      {simulation.scheduleVarianceWeeks > 0 ? (
+                        <span className="text-[#b5502f] font-semibold">
+                          ({simulation.scheduleVarianceWeeks.toFixed(1)} weeks past target deadline)
+                        </span>
+                      ) : (
+                        <span className="text-[#2b5336] font-semibold">
+                          ({Math.abs(simulation.scheduleVarianceWeeks).toFixed(1)} wks buffer ahead of deadline)
+                        </span>
+                      )}
+                      {" "}with <strong>{(mcResult ? mcResult.probabilityOnTime * 100 : simulation.probOnTime).toFixed(0)}% completion certainty</strong>.
+                    </p>
+                    <p>
+                      • <strong>Cost & Labor:</strong> Projected cost is <strong>${Math.round(simulation.estimatedCost).toLocaleString()}</strong>{" "}
+                      {simulation.estimatedCost - budget > 0 ? (
+                        <span className="text-[#b5502f] font-semibold">
+                          (${Math.round(simulation.estimatedCost - budget).toLocaleString()} over budget)
+                        </span>
+                      ) : (
+                        <span className="text-[#2b5336] font-semibold">
+                          (${Math.round(Math.abs(simulation.estimatedCost - budget)).toLocaleString()} remaining margin)
+                        </span>
+                      )}
+                      ; {headcount} engineers generate {simulation.dragPenalty.toFixed(2)} drag penalty (Brooks&apos;s Law).
+                    </p>
+                    <p className="text-[#2c4356] font-medium">
+                      • <strong>Key Takeaway:</strong>{" "}
+                      {simResult?.feasible
+                        ? "All core parameters are aligned. Timeline and cost risk profiles are healthy and within operational tolerance."
+                        : simulation.scheduleVarianceWeeks > 0 && simulation.estimatedCost - budget > 0
+                        ? "Both schedule and budget thresholds are breached. Consider extending the deadline to ~" + Math.ceil(simulation.estimatedWeeks) + " weeks or descoping to restore balance."
+                        : simulation.scheduleVarianceWeeks > 0
+                        ? "Schedule compression is the primary friction. Adding more headcount increases communication overhead without accelerating delivery. Extending the deadline is recommended."
+                        : "Budget allocation is exceeded by actual labor costs. Adjust team size or negotiate budget cap to regain feasibility."}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>

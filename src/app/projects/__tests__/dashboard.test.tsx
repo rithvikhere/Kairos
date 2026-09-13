@@ -72,13 +72,13 @@ describe("ProjectsDashboardPage — Interactive Workable Dashboard", () => {
     // Initial headcount: 10
     expect(screen.getByText("10 engineers")).toBeInTheDocument();
 
-    // Find headcount slider by its role
+    // Find headcount slider by its role/value
     const sliders = screen.getAllByRole("slider");
-    const headcountSlider = sliders[0];
+    const headcountSlider = sliders.find((s) => (s as HTMLInputElement).value === "10") ?? sliders[1]!;
     expect(headcountSlider).toHaveValue("10");
 
     // Adjust headcount to 6
-    fireEvent.change(headcountSlider!, { target: { value: "6" } });
+    fireEvent.change(headcountSlider, { target: { value: "6" } });
     expect(screen.getByText("6 engineers")).toBeInTheDocument();
   });
 

@@ -14,10 +14,23 @@ export interface ConstraintMeta {
   step: number;
   defaultValue: number;
   description: string;
+  isMandatory?: boolean;
 }
 
 export const CONSTRAINT_CATALOGUE: ConstraintMeta[] = [
   // 1. Core Resourcing
+  {
+    key: "scope",
+    label: "Scope Effort",
+    category: "Core Resourcing",
+    unit: "story points",
+    min: 20,
+    max: 2000,
+    step: 5,
+    defaultValue: 140,
+    description: "Total estimated technical workload. Core workload anchor required to compute timeline, cost, and simulation charts.",
+    isMandatory: true,
+  },
   {
     key: "headcount",
     label: "Headcount",
@@ -50,17 +63,6 @@ export const CONSTRAINT_CATALOGUE: ConstraintMeta[] = [
     step: 1,
     defaultValue: 16,
     description: "Required calendar delivery timeframe.",
-  },
-  {
-    key: "scope",
-    label: "Scope Effort",
-    category: "Core Resourcing",
-    unit: "person-weeks",
-    min: 20,
-    max: 2000,
-    step: 10,
-    defaultValue: 480,
-    description: "Total estimated technical effort.",
   },
 
   // 2. Team Factors
@@ -227,7 +229,7 @@ export function ConstraintCatalogueModal({
       for (const meta of CONSTRAINT_CATALOGUE) {
         const existing = currentConstraints[meta.key];
         initial[meta.key] = {
-          enabled: existing?.enabled ?? false,
+          enabled: meta.isMandatory ? true : (existing?.enabled ?? false),
           value: existing?.value ?? meta.defaultValue,
         };
       }
@@ -246,9 +248,10 @@ export function ConstraintCatalogueModal({
   ] as const;
 
   const toggleConstraint = (key: ConstraintKey) => {
+    const meta = CONSTRAINT_CATALOGUE.find((m) => m.key === key);
+    if (meta?.isMandatory) return; // Scope Effort is mandatory and cannot be disabled
     setDraft((prev) => {
       const current = prev[key];
-      const meta = CONSTRAINT_CATALOGUE.find((m) => m.key === key);
       return {
         ...prev,
         [key]: {
@@ -334,19 +337,33 @@ export function ConstraintCatalogueModal({
                         <div className="flex items-start justify-between gap-4">
                           {/* Toggle & Label */}
                           <div className="flex items-start gap-3 flex-1 min-w-0">
-                            <input
-                              type="checkbox"
-                              id={`toggle-${meta.key}`}
-                              checked={isEnabled}
-                              onChange={() => toggleConstraint(meta.key)}
-                              className="mt-1 w-4 h-4 rounded border-neutral text-accent focus:ring-accent accent-accent cursor-pointer"
-                            />
+                            {meta.isMandatory ? (
+                              <div
+                                className="mt-1 w-4 h-4 rounded bg-[#2c4356] text-white flex items-center justify-center shrink-0 shadow-2xs"
+                                title="Mandatory Core Workload Anchor"
+                              >
+                                <Check className="w-3 h-3 stroke-[3]" />
+                              </div>
+                            ) : (
+                              <input
+                                type="checkbox"
+                                id={`toggle-${meta.key}`}
+                                checked={isEnabled}
+                                onChange={() => toggleConstraint(meta.key)}
+                                className="mt-1 w-4 h-4 rounded border-neutral text-accent focus:ring-accent accent-accent cursor-pointer"
+                              />
+                            )}
                             <div className="min-w-0">
                               <label
                                 htmlFor={`toggle-${meta.key}`}
                                 className="text-sm font-semibold text-ink cursor-pointer hover:underline flex items-center gap-1.5"
                               >
                                 {meta.label}
+                                {meta.isMandatory && (
+                                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-[#2c4356]/10 text-[#2c4356] font-bold">
+                                    Mandatory Anchor
+                                  </span>
+                                )}
                                 <span className="text-[11px] font-mono font-normal text-ink/50">
                                   ({meta.unit})
                                 </span>
