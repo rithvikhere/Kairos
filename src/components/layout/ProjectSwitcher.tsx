@@ -58,7 +58,7 @@ export const ProjectSwitcher: React.FC = () => {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-neutral bg-[#faf8f4] hover:bg-neutral/60 text-ink text-sm font-medium transition-colors"
+        className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-neutral bg-[#282c2d] hover:bg-neutral/60 text-ink text-sm font-medium transition-colors"
       >
         <Folder className="w-4 h-4 text-accent" />
         <span className="max-w-[140px] truncate font-serif font-semibold">
@@ -73,7 +73,7 @@ export const ProjectSwitcher: React.FC = () => {
             className="fixed inset-0 z-40"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute left-0 mt-1 w-64 rounded-xl border border-neutral bg-[#faf8f4] shadow-card-hover p-1.5 z-50 text-sm">
+          <div className="absolute left-0 mt-1 w-64 rounded-xl border border-neutral bg-[#282c2d] shadow-card-hover p-1.5 z-50 text-sm">
             <div className="px-2 py-1.5 text-xs font-semibold text-ink/50 uppercase tracking-wider">
               Projects
             </div>
@@ -135,7 +135,7 @@ export const ProjectSwitcher: React.FC = () => {
                 value={newProjectName}
                 onChange={(e) => setNewProjectName(e.target.value)}
                 placeholder="e.g., Q3 Platform Migration"
-                className="w-full px-3 py-2 rounded-lg border border-neutral bg-[#faf8f4] text-ink text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                className="w-full px-3 py-2 rounded-lg border border-neutral bg-[#282c2d] text-ink text-sm focus:outline-none focus:ring-2 focus:ring-accent"
               />
             </div>
 
@@ -148,7 +148,7 @@ export const ProjectSwitcher: React.FC = () => {
                 value={newProjectDesc}
                 onChange={(e) => setNewProjectDesc(e.target.value)}
                 placeholder="What strategic initiative does this project evaluate?"
-                className="w-full px-3 py-2 rounded-lg border border-neutral bg-[#faf8f4] text-ink text-sm focus:outline-none focus:ring-2 focus:ring-accent resize-none"
+                className="w-full px-3 py-2 rounded-lg border border-neutral bg-[#282c2d] text-ink text-sm focus:outline-none focus:ring-2 focus:ring-accent resize-none"
               />
             </div>
 

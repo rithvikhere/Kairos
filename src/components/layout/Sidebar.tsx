@@ -30,7 +30,7 @@ export const Sidebar: React.FC = () => {
   return (
     <aside
       className={cn(
-        "flex flex-col border-r border-neutral bg-[#faf8f4] transition-all duration-300 z-20 select-none",
+        "flex flex-col border-r border-neutral bg-[#282c2d] transition-all duration-300 z-20 select-none",
         sidebarCollapsed ? "w-16" : "w-64"
       )}
     >

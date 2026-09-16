@@ -59,7 +59,7 @@ export function TrialScatterPlot({ trialSample }: TrialScatterPlotProps) {
     <div className="p-5 bg-white border border-neutral rounded-2xl shadow-xs space-y-3 text-ink">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-serif text-sm font-bold text-ink">Trial Scatter Distribution</h3>
+          <h3 className="font-serif text-base font-bold text-[#0f172a]">Trial Scatter Distribution</h3>
           <p className="text-xs text-ink/60">
             Actual Cost vs. Estimated Time across representative trials ({trialSample.length} samples)
           </p>

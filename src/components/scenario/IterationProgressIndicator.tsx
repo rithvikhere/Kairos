@@ -76,8 +76,8 @@ export function IterationProgressIndicator({
           )}
           Monte Carlo Iterations Processed
         </span>
-        <span className="font-mono text-xs font-bold text-ink">
-          {displayedCount.toLocaleString()} / {totalIterations.toLocaleString()} trials ({percentage.toFixed(0)}%)
+        <span className="font-mono text-xs font-bold text-ink" suppressHydrationWarning>
+          {displayedCount.toLocaleString("en-US")} / {totalIterations.toLocaleString("en-US")} trials ({percentage.toFixed(0)}%)
         </span>
       </div>
 

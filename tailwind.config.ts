@@ -7,23 +7,23 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        base: "#f5f2ec",       // warm bone — never pure #ffffff
-        ink: "#1f2421",        // deep forest-charcoal — never pure #000000
+        base: "#343839",       // dark charcoal-slate background
+        ink: "#d0fcf4",        // luminous mint text
         accent: "#3a5a6b",     // deep petrol/slate-teal — one solid color, no gradient
-        neutral: "#e8e3d8",    // warm greige
+        neutral: "#454d4b",    // dark border and card neutral
         "risk-low": "#e6ede3", // sage
         "risk-mod": "#f2e6c8", // honey
         "risk-high": "#eccb9c",// amber-copper
         "risk-crit": "#d99a8a",// deep brick
 
         // Landing Identity Palette
-        "landing-base": "#f6f4ef",       // warm bone/off-white — never pure white
-        "landing-ink": "#221f1b",        // near-black warm charcoal — never pure black
-        "landing-accent": "#2c4356",     // deep slate-navy
+        "landing-base": "#343839",         // dark background
+        "landing-ink": "#d0fcf4",          // luminous mint text
+        "landing-accent": "#2c4356",       // deep slate-navy
         "landing-accent-hover": "#1d2e3b", // deep state hover
-        "signal-sage": "#8ba888",        // low risk / feasible signal
-        "signal-amber": "#c98a3e",       // moderate risk signal
-        "signal-terracotta": "#b5502f",   // high / critical risk signal
+        "signal-sage": "#8ba888",          // low risk / feasible signal
+        "signal-amber": "#c98a3e",         // moderate risk signal
+        "signal-terracotta": "#b5502f",     // high / critical risk signal
       },
       fontFamily: {
         serif: ["var(--font-fraunces)", "Georgia", "serif"],

@@ -57,9 +57,9 @@ export function ConstraintSummaryStrip({
             >
               <button
                 type="button"
-                onClick={onOpenModal}
-                className="flex items-center gap-1.5 text-left focus:outline-none"
-                title={`${meta.label}: ${meta.description}`}
+                onClick={() => (onExplainConstraint ? onExplainConstraint(meta.key) : onOpenModal())}
+                className="flex items-center gap-1.5 text-left focus:outline-none cursor-pointer"
+                title={`${meta.label}: Click to view explanation`}
               >
                 <span
                   className={`w-1.5 h-1.5 rounded-full ${
@@ -68,9 +68,9 @@ export function ConstraintSummaryStrip({
                 />
                 <span>{meta.label}</span>
                 {isEnabled && setting?.value !== undefined && (
-                  <span className="font-mono text-[11px] opacity-80">
+                  <span className="font-mono text-[11px] opacity-80" suppressHydrationWarning>
                     {meta.key === "budget"
-                      ? `$${Number(setting.value).toLocaleString()}`
+                      ? `$${Number(setting.value).toLocaleString("en-US")}`
                       : setting.value}
                   </span>
                 )}

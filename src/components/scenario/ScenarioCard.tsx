@@ -57,7 +57,7 @@ export const ScenarioCard: React.FC<ScenarioCardProps> = ({ scenario, projectId 
         borderColor: visualConfig.color,
       }}
       transition={{ duration: 0.2, ease: "easeOut" }}
-      className="relative flex flex-col justify-between p-5 rounded-xl border border-neutral bg-[#faf8f4] text-ink shadow-card transition-colors"
+      className="relative flex flex-col justify-between p-5 rounded-xl border border-neutral bg-[#282c2d] text-ink shadow-card transition-colors"
       style={{
         borderLeftWidth: "4px",
         borderLeftColor: visualConfig.color,

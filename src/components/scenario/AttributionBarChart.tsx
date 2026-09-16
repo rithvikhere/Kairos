@@ -22,7 +22,7 @@ export const AttributionBarChart: React.FC<AttributionBarChartProps> = ({
 }) => {
   if (!attribution || attribution.length === 0) {
     return (
-      <div className="p-6 rounded-2xl border border-neutral bg-[#faf8f4] text-center text-xs text-ink/50">
+      <div className="p-6 rounded-2xl border border-neutral bg-[#282c2d] text-center text-xs text-ink/50">
         No isolated input modifications to attribute.
       </div>
     );
@@ -36,7 +36,7 @@ export const AttributionBarChart: React.FC<AttributionBarChartProps> = ({
   }));
 
   return (
-    <div className="p-6 rounded-2xl border border-neutral bg-[#faf8f4] shadow-card space-y-4">
+    <div className="p-6 rounded-2xl border border-neutral bg-[#282c2d] shadow-card space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <h4 className="font-serif text-base font-bold text-ink">
           Single-Variable Risk Attribution
@@ -53,19 +53,19 @@ export const AttributionBarChart: React.FC<AttributionBarChartProps> = ({
             layout="vertical"
             margin={{ top: 10, right: 30, left: 40, bottom: 10 }}
           >
-            <XAxis type="number" tick={{ fill: "#1f2421", fontSize: 11 }} />
+            <XAxis type="number" tick={{ fill: "#d0fcf4", fontSize: 11 }} />
             <YAxis
               type="category"
               dataKey="field"
-              tick={{ fill: "#1f2421", fontSize: 11, fontWeight: "bold" }}
+              tick={{ fill: "#d0fcf4", fontSize: 11, fontWeight: "bold" }}
             />
             <Tooltip
               contentStyle={{
-                backgroundColor: "#faf8f4",
-                borderColor: "#e8e3d8",
+                backgroundColor: "#282c2d",
+                borderColor: "#454d4b",
                 borderRadius: "8px",
                 fontSize: "12px",
-                color: "#1f2421",
+                color: "#d0fcf4",
               }}
               formatter={(value: any) => [
                 `${value > 0 ? "+" : ""}${value} risk points`,

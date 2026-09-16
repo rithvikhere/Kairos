@@ -19,22 +19,22 @@ export const FeatureShowcaseSection: React.FC = () => {
   return (
     <section
       id="feature-showcase"
-      className="relative py-24 px-6 sm:px-12 lg:px-20 bg-[#f6f4ef] text-[#221f1b] border-b border-[#221f1b]/10"
+      className="relative py-24 px-6 sm:px-12 lg:px-20 bg-transparent text-[#d0fcf4] border-b border-[#d0fcf4]/15"
     >
       <div className="max-w-7xl mx-auto space-y-12">
         {/* Editorial Section Header */}
         <div className="max-w-3xl space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-sans text-[#2c4356] bg-[#2c4356]/10 border border-[#2c4356]/20">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#2c4356]" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-sans text-[#d0fcf4] bg-[#2c4356]/40 border border-[#2c4356]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#d0fcf4]" />
             <span>Interactive Product Architecture</span>
           </div>
 
-          <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-[#221f1b] leading-[1.15]">
+          <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-[#d0fcf4] leading-[1.15]">
             An instrument built for <br />
-            <span className="italic font-serif text-[#2c4356]">trade-off physics.</span>
+            <span className="italic font-serif text-[#78dec8]">trade-off physics.</span>
           </h2>
 
-          <p className="text-base sm:text-lg text-[#221f1b]/80 font-sans font-normal leading-relaxed">
+          <p className="text-base sm:text-lg text-[#d0fcf4]/80 font-sans font-normal leading-relaxed">
             Every lever alters team communication overhead, timeline slippage, and budget
             consumption. Click any pulsating marker on the live workspace preview to inspect the
             mathematical mechanisms behind each subsystem.
@@ -42,7 +42,7 @@ export const FeatureShowcaseSection: React.FC = () => {
 
           {/* Quick Subsystem Nav Buttons for Accessibility and Touch screens */}
           <div className="flex flex-wrap items-center gap-2 pt-2">
-            <span className="text-xs font-sans text-[#221f1b]/60 mr-1">Inspect subsystem:</span>
+            <span className="text-xs font-sans text-[#d0fcf4]/60 mr-1">Inspect subsystem:</span>
             {quickNav.map((item) => {
               const Icon = item.icon;
               return (
@@ -50,7 +50,7 @@ export const FeatureShowcaseSection: React.FC = () => {
                   key={item.id}
                   type="button"
                   onClick={() => setActiveHotspot(item.id)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/80 hover:bg-[#2c4356] hover:text-[#f6f4ef] text-[#221f1b] border border-[#221f1b]/10 text-xs font-sans font-medium transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2c4356]"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#3a4041] hover:bg-[#2c4356] hover:text-[#d0fcf4] text-[#d0fcf4] border border-[#d0fcf4]/15 text-xs font-sans font-medium transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2c4356]"
                 >
                   <Icon className="w-3.5 h-3.5 opacity-80" />
                   <span>{item.label}</span>

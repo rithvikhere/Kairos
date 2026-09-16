@@ -79,7 +79,7 @@ export const ScenarioSliderPanel: React.FC<ScenarioSliderPanelProps> = ({
   const visualConfig = RISK_COLOR_MAP[riskBand];
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6 rounded-2xl border border-neutral bg-[#faf8f4] shadow-card">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6 rounded-2xl border border-neutral bg-[#282c2d] shadow-card">
       {/* Sliders Column (2 cols wide on desktop) */}
       <div className="lg:col-span-2 space-y-6">
         <h3 className="font-serif text-lg font-bold text-ink">

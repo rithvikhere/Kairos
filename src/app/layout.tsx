@@ -29,7 +29,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${fraunces.variable} ${plusJakarta.variable}`}>
-      <body className="bg-[#f6f4ef] text-[#221f1b] min-h-screen flex flex-col font-sans antialiased selection:bg-[#2c4356] selection:text-[#f6f4ef]">
+      <body className="bg-[#343839] text-[#d0fcf4] min-h-screen flex flex-col font-sans antialiased selection:bg-[#2c4356] selection:text-[#d0fcf4]">
         <Providers>
           <AppShell>{children}</AppShell>
         </Providers>

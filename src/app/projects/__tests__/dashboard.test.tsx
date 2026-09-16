@@ -121,13 +121,14 @@ describe("ProjectsDashboardPage — Interactive Workable Dashboard", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("triggers Monte Carlo simulation on button click", () => {
+  it("triggers Monte Carlo simulation on button click starting at base 100", () => {
     renderDashboard();
 
-    const mcBtn = screen.getByRole("button", { name: /run monte carlo/i });
+    const mcBtn = screen.getByRole("button", { name: /run monte carlo \(100\)/i });
+    expect(mcBtn).toBeInTheDocument();
     fireEvent.click(mcBtn);
 
-    expect(screen.getByText(/Sampling 2,500 runs\.\.\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Sampling 200 runs\.\.\./i)).toBeInTheDocument();
   });
 
   it("filters scenarios using search input and status tabs", () => {
@@ -181,5 +182,47 @@ describe("ProjectsDashboardPage — Interactive Workable Dashboard", () => {
     expect(
       screen.getByPlaceholderText(/Platform Re-architecture/i)
     ).toBeInTheDocument();
+  });
+
+  it("renders KAIROS brand with high contrast styling in the chrome bar", () => {
+    renderDashboard();
+
+    const brand = screen.getByText("KAIROS");
+    expect(brand).toBeInTheDocument();
+    expect(brand.className).toContain("text-[#0f172a]");
+  });
+
+  it("opens Compare Scenarios in landscape mode with values on the left and sensitivity tornado on the right", () => {
+    renderDashboard();
+
+    const compareBtn = screen.getByRole("button", {
+      name: /compare scenarios/i,
+    });
+    fireEvent.click(compareBtn);
+
+    expect(screen.getByText(/Landscape Mode/i)).toBeInTheDocument();
+    expect(screen.getByText(/Sensitivity Tornado Analysis/i)).toBeInTheDocument();
+
+    const doneBtn = screen.getByRole("button", { name: "Done" });
+    fireEvent.click(doneBtn);
+  });
+
+  it("displays simulation purpose, impact, and expandable use details in Configure Scenario Constraints dialog", () => {
+    renderDashboard();
+
+    const addLeversBtn = screen.getByRole("button", { name: /\+ Add More Levers/i });
+    fireEvent.click(addLeversBtn);
+
+    expect(screen.getByText(/Configure Scenario Constraints/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Simulation Purpose:/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Impacts:/i).length).toBeGreaterThan(0);
+
+    const detailButtons = screen.getAllByRole("button", { name: /What's the use\? Details/i });
+    expect(detailButtons.length).toBeGreaterThan(0);
+
+    // Expand first details
+    fireEvent.click(detailButtons[0]!);
+    expect(screen.getByText(/How Kairos Simulates This:/i)).toBeInTheDocument();
+    expect(screen.getByText(/Recommended Benchmark:/i)).toBeInTheDocument();
   });
 });

@@ -17,7 +17,7 @@ export const DiffExplanationPanel: React.FC<DiffExplanationPanelProps> = ({
   onRefresh,
 }) => {
   return (
-    <div className="p-6 rounded-2xl border border-neutral bg-[#faf8f4] shadow-card space-y-4">
+    <div className="p-6 rounded-2xl border border-neutral bg-[#282c2d] shadow-card space-y-4">
       {/* Header with Source Badge */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">

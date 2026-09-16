@@ -60,7 +60,7 @@ export const NaturalLanguageIntentBar: React.FC<NaturalLanguageIntentBarProps> =
   };
 
   return (
-    <div className="p-5 rounded-2xl border border-neutral bg-[#faf8f4] shadow-card space-y-4">
+    <div className="p-5 rounded-2xl border border-neutral bg-[#282c2d] shadow-card space-y-4">
       <div className="flex items-center gap-2">
         <Sparkles className="w-4 h-4 text-accent" />
         <h4 className="font-serif text-sm font-bold text-ink">
@@ -74,7 +74,7 @@ export const NaturalLanguageIntentBar: React.FC<NaturalLanguageIntentBarProps> =
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="e.g. 'Cut budget 20%, add 2 people, and push deadline back 4 weeks'"
-          className="flex-1 px-3.5 py-2.5 rounded-lg border border-neutral bg-[#f5f2ec] text-ink text-sm placeholder:text-ink/40 focus:outline-none focus:ring-2 focus:ring-accent"
+          className="flex-1 px-3.5 py-2.5 rounded-lg border border-neutral bg-[#222526] text-ink text-sm placeholder:text-ink/40 focus:outline-none focus:ring-2 focus:ring-accent"
           disabled={isParsing}
         />
         <AnimatedButton
@@ -144,13 +144,13 @@ export const NaturalLanguageIntentBar: React.FC<NaturalLanguageIntentBarProps> =
                     {delta.type === "percent"
                       ? `${delta.value > 0 ? "+" : ""}${delta.value}%`
                       : delta.type === "delta"
-                      ? `${delta.value > 0 ? "+" : ""}${prefix}${delta.value.toLocaleString()}${unit}`
-                      : `${prefix}${delta.value.toLocaleString()}${unit}`}
+                      ? `${delta.value > 0 ? "+" : ""}${prefix}${delta.value.toLocaleString("en-US")}${unit}`
+                      : `${prefix}${delta.value.toLocaleString("en-US")}${unit}`}
                     {resolvedVal !== undefined && (
                       <span className="text-ink/50 ml-1">
                         → {prefix}
                         {typeof resolvedVal === "number"
-                          ? resolvedVal.toLocaleString()
+                          ? resolvedVal.toLocaleString("en-US")
                           : String(resolvedVal)}
                         {unit}
                       </span>

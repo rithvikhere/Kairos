@@ -32,7 +32,7 @@ export function SensitivityTornadoChart({ attribution }: SensitivityTornadoChart
     <div className="p-5 bg-white border border-neutral rounded-2xl shadow-xs space-y-4 text-ink">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-serif text-sm font-bold text-ink">Sensitivity Tornado Chart</h3>
+          <h3 className="font-serif text-base font-bold text-[#0f172a]">Sensitivity Tornado Chart</h3>
           <p className="text-xs text-ink/60">
             Isolated risk delta per active changed lever (largest absolute impact first)
           </p>

@@ -152,8 +152,8 @@ export const ScenarioDiffTable: React.FC<ScenarioDiffTableProps> = ({ diff }) =>
       )}
 
       {/* Input Deltas Table */}
-      <div className="overflow-hidden rounded-2xl border border-neutral bg-[#faf8f4] shadow-card">
-        <div className="px-6 py-4 border-b border-neutral bg-[#f5f2ec]/60">
+      <div className="overflow-hidden rounded-2xl border border-neutral bg-[#282c2d] shadow-card">
+        <div className="px-6 py-4 border-b border-neutral bg-[#222526]/60">
           <h4 className="font-serif text-base font-bold text-ink">
             Scenario Input Levers
           </h4>
@@ -197,8 +197,8 @@ export const ScenarioDiffTable: React.FC<ScenarioDiffTableProps> = ({ diff }) =>
       </div>
 
       {/* Output Deltas Table */}
-      <div className="overflow-hidden rounded-2xl border border-neutral bg-[#faf8f4] shadow-card">
-        <div className="px-6 py-4 border-b border-neutral bg-[#f5f2ec]/60">
+      <div className="overflow-hidden rounded-2xl border border-neutral bg-[#282c2d] shadow-card">
+        <div className="px-6 py-4 border-b border-neutral bg-[#222526]/60">
           <h4 className="font-serif text-base font-bold text-ink">
             Deterministic Simulation Outputs
           </h4>

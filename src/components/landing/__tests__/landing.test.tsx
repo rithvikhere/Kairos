@@ -110,12 +110,13 @@ describe("Landing Page Components", () => {
     expect(closed).toBe(true);
   });
 
-  it("DataVisualizationsSection renders risk scoring, portfolio mix, and Monte Carlo spread", () => {
+  it("DataVisualizationsSection renders risk scoring, portfolio mix, Monte Carlo spread, and trade-off frontier", () => {
     render(<DataVisualizationsSection />);
 
     expect(screen.getByText("Multi-Axis Risk Scoring")).toBeInTheDocument();
     expect(screen.getByText("Scenario Portfolio Mix")).toBeInTheDocument();
     expect(screen.getByText("Monte Carlo Spread")).toBeInTheDocument();
+    expect(screen.getByText("Delivery Trade-off Frontier")).toBeInTheDocument();
     expect(screen.getByText("Structure and color that")).toBeInTheDocument();
   });
 

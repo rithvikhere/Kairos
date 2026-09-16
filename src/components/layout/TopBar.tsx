@@ -23,7 +23,7 @@ export const TopBar: React.FC = () => {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between h-16 px-6 border-b border-neutral bg-[#f5f2ec]/90 backdrop-blur-md">
+    <header className="sticky top-0 z-30 flex items-center justify-between h-16 px-6 border-b border-neutral bg-[#343839]/90 backdrop-blur-md">
       <div className="flex items-center gap-4">
         <button
           onClick={toggleSidebar}
@@ -45,7 +45,7 @@ export const TopBar: React.FC = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search scenarios..."
-            className="w-56 pl-9 pr-3 py-1.5 rounded-lg border border-neutral bg-[#faf8f4] text-ink text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+            className="w-56 pl-9 pr-3 py-1.5 rounded-lg border border-neutral bg-[#282c2d] text-ink text-sm focus:outline-none focus:ring-2 focus:ring-accent"
           />
         </form>
 

@@ -2,6 +2,8 @@ import { searchScenarios } from "../../../../data/db.js";
 import { handleRouteError } from "../../../../lib/api/errors.js";
 import { fail, ok } from "../../../../lib/api/respond.js";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);

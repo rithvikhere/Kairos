@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, Check, Sliders, ShieldAlert, Users, Layers, Globe } from "lucide-react";
+import { X, Check, Sliders, ShieldAlert, Users, Layers, Globe, Info, Sparkles } from "lucide-react";
 import type { ConstraintKey, ConstraintSetting, ScenarioInputs } from "../../domain/types.js";
 
 export interface ConstraintMeta {
@@ -193,6 +193,104 @@ export const CONSTRAINT_CATALOGUE: ConstraintMeta[] = [
   },
 ];
 
+export const CONSTRAINT_PURPOSES: Record<ConstraintKey, {
+  use: string;
+  impact: string;
+  mechanism: string;
+  guidance: string;
+}> = {
+  scope: {
+    use: "Foundational technical effort anchor required to compute calendar duration and team burn.",
+    impact: "Delivery timeline, team burn, actual cost, and utilization curves.",
+    mechanism: "Estimated Duration = Scope / (Effective Headcount × Velocity Factor).",
+    guidance: "Calibrate via story points or person-weeks. Baseline standard is 140 points.",
+  },
+  headcount: {
+    use: "Team size capacity lever balancing raw engineering throughput against quadratic communication tax.",
+    impact: "Effective Headcount, Delivery Duration, Staffing Risk, and Actual Burn Rate.",
+    mechanism: "Applies Brooks's Law: Overhead = 1 + 0.05 × max(0, n - 3); Effective Headcount = n / Overhead Factor.",
+    guidance: "Ideal autonomous pod size is 5–8 engineers. Above 12 introduces severe communication drag.",
+  },
+  budget: {
+    use: "Financial authorization ceiling that penalizes cost overruns and enforces resource discipline.",
+    impact: "Budget Risk, Financial Feasibility, and Cost Overrun Penalties.",
+    mechanism: "Actual Cost = Headcount × Duration × $1,758.50/person-week. Compares actual burn vs cap.",
+    guidance: "Ensure budget includes contractor margins, tooling, and cloud infrastructure.",
+  },
+  deadlineWeeks: {
+    use: "Target calendar milestone boundary that establishes schedule feasibility and delivery pressure.",
+    impact: "Schedule Risk, Project Feasibility status, and Delivery Slip warnings.",
+    mechanism: "Schedule Utilization = Estimated Duration / Target Deadline. Non-linear risk penalty past deadline.",
+    guidance: "Maintain a 15–20% schedule buffer to absorb discovery and unexpected integration cycles.",
+  },
+  teamSeniorityMix: {
+    use: "Ratio of senior/lead engineers to model architectural problem-solving speed and defect prevention.",
+    impact: "Team Seniority Risk, Code Quality, and Supervisory Drag.",
+    mechanism: "Lower seniority (<0.3) increases bug rework and slows critical path resolution.",
+    guidance: "Target 30–50% senior density for core architecture to balance mentorship and execution velocity.",
+  },
+  attritionRisk: {
+    use: "Turnover expectation modeling context loss, vacancy gaps, and onboarding drag from departures.",
+    impact: "Team Attrition Risk and Capacity Degradation.",
+    mechanism: "Turnover triggers 1.5x compounding risk multiplier due to knowledge drainage.",
+    guidance: "Historical software team attrition runs 10–18% annually. Mitigate with documentation.",
+  },
+  teamFamiliarity: {
+    use: "Proficiency ratio with target technology stack, API contracts, and domain codebase.",
+    impact: "Domain Familiarity Risk and Initial Sprint Velocity.",
+    mechanism: "New stacks require conceptual exploration spikes, introducing 20–40% early-phase drag.",
+    guidance: "If adopting a new framework, budget 2–3 weeks of initial prototyping.",
+  },
+  externalDependencyCount: {
+    use: "Count of upstream teams, third-party APIs, or vendor services on the critical path.",
+    impact: "External Dependency Risk and Blocking Probability.",
+    mechanism: "Each external dependency introduces coordination friction and handoff latency.",
+    guidance: "Keep hard external blockers below 3 per autonomous stream.",
+  },
+  vendorLeadTimeWeeks: {
+    use: "Procurement, security review, and vendor provisioning lead time in calendar weeks.",
+    impact: "Vendor Lead Time Risk and Upstream Schedule Gating.",
+    mechanism: "Delays milestone kick-off and gates integration testing until vendor delivery.",
+    guidance: "Account for 4–6 weeks for enterprise procurement and legal compliance reviews.",
+  },
+  regulatoryComplexity: {
+    use: "Scrutiny bar for compliance regimes (SOC2, GDPR, HIPAA, PCI, financial governance).",
+    impact: "Regulatory Compliance Risk and Audit Gate Deadlines.",
+    mechanism: "Mandates rigorous verification checkpoints, slowing release velocity by 15–30%.",
+    guidance: "Involve compliance officers at sprint planning rather than at release gate.",
+  },
+  technicalDebtLevel: {
+    use: "Legacy code friction, missing test coverage, and refactoring burden in target modules.",
+    impact: "Technical Debt Risk, Regression Rate, and Bug Backlog.",
+    mechanism: "High debt creates unexpected regressions during feature development, requiring extra rework.",
+    guidance: "Allocate 20% of sprint capacity to debt remediation if severity is 5 or above.",
+  },
+  scopeVolatility: {
+    use: "Anticipated mid-project requirement churn, pivoting stakeholder priorities, or spec expansion.",
+    impact: "Scope Volatility Risk and Stochastic Timeline Variance.",
+    mechanism: "Increases Monte Carlo variance spread, expanding the p90 delivery tail.",
+    guidance: "Lock scope at milestone freeze; high volatility projects require agile re-baselining.",
+  },
+  distributedTeamOverhead: {
+    use: "Number of disparate time zones and geographical sites collaborating on delivery.",
+    impact: "Multisite Overhead Risk and Asynchronous Handoff Latency.",
+    mechanism: "Timezone gaps >4 hours reduce synchronous overlap, delaying pull-request reviews.",
+    guidance: "Establish core overlapping collaboration hours (at least 3–4 hours daily).",
+  },
+  qualityRigor: {
+    use: "Required test coverage, penetration tests, and security hardening verification standard.",
+    impact: "Quality & Testing Risk and Release Certification Buffer.",
+    mechanism: "High rigor (8+) increases validation duration but suppresses downstream production failures.",
+    guidance: "High-rigor tier is recommended for payment processing and core authentication services.",
+  },
+  stakeholderCount: {
+    use: "Number of sign-off gatekeepers, executive reviewers, or cross-functional sponsors.",
+    impact: "Stakeholder Alignment Risk and Approval Delay Cycles.",
+    mechanism: "Quadratic consensus overhead: each stakeholder adds alignment meetings and review cycles.",
+    guidance: "Designate a single product decision-maker with final sign-off authority.",
+  },
+};
+
 export const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   "Core Resourcing": <Layers className="w-4 h-4 text-[#3a5a6b]" />,
   "Team Factors": <Users className="w-4 h-4 text-[#3d5a45]" />,
@@ -221,6 +319,7 @@ export function ConstraintCatalogueModal({
   onApply,
 }: ConstraintCatalogueModalProps) {
   const [draft, setDraft] = useState<Partial<Record<ConstraintKey, ConstraintSetting>>>({});
+  const [expandedKey, setExpandedKey] = useState<ConstraintKey | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -289,7 +388,7 @@ export function ConstraintCatalogueModal({
               <Sliders className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="font-serif text-xl sm:text-2xl font-bold text-ink">Configure Scenario Constraints</h2>
+              <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#0f172a]">Configure Scenario Constraints</h2>
               <p className="text-xs text-ink/60">
                 Toggle and calibrate the 15 uniform levers that govern simulation computation
               </p>
@@ -371,6 +470,49 @@ export function ConstraintCatalogueModal({
                               <p className="text-xs text-ink/65 leading-relaxed mt-0.5">
                                 {meta.description}
                               </p>
+
+                              {/* Information about constraint: what's the use before even adding it */}
+                              <div className="mt-2 pt-2 border-t border-neutral/40 text-[11px] space-y-1.5">
+                                <div className="flex items-start gap-1.5 text-[#2c4356]">
+                                  <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[#2c4356]" />
+                                  <div className="leading-snug">
+                                    <span className="font-semibold text-[#2c4356]">Simulation Purpose: </span>
+                                    <span className="text-[#221f1b]/80">
+                                      {CONSTRAINT_PURPOSES[meta.key]?.use || meta.description}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="flex flex-wrap items-center justify-between gap-1 text-[10.5px] text-[#221f1b]/65 pt-0.5">
+                                  <span>
+                                    <strong className="text-[#221f1b]/80">Impacts:</strong>{" "}
+                                    {CONSTRAINT_PURPOSES[meta.key]?.impact}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setExpandedKey(expandedKey === meta.key ? null : meta.key);
+                                    }}
+                                    className="text-[#2c4356] hover:underline font-semibold cursor-pointer shrink-0"
+                                  >
+                                    {expandedKey === meta.key ? "Hide formula & guidance ▲" : "What's the use? Details ▼"}
+                                  </button>
+                                </div>
+
+                                {expandedKey === meta.key && (
+                                  <div className="mt-1.5 p-2.5 rounded-lg bg-white/95 border border-[#2c4356]/20 text-[11px] space-y-1.5 text-[#221f1b]/80 shadow-2xs animate-in fade-in duration-150">
+                                    <div>
+                                      <strong className="text-[#2c4356]">How Kairos Simulates This:</strong>{" "}
+                                      <span>{CONSTRAINT_PURPOSES[meta.key]?.mechanism}</span>
+                                    </div>
+                                    <div>
+                                      <strong className="text-[#2c4356]">Recommended Benchmark:</strong>{" "}
+                                      <span>{CONSTRAINT_PURPOSES[meta.key]?.guidance}</span>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
 

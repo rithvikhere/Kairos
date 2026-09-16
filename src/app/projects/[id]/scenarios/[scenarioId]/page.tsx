@@ -266,8 +266,8 @@ export default function ScenarioDetailPage() {
           <div className="space-y-3 font-sans text-sm">
             <div className="flex justify-between py-2 border-b border-neutral/60">
               <span className="text-ink/60">Budget Available</span>
-              <span className="font-mono font-bold text-ink">
-                ${getInputValue(scenario.inputs, "budget", 250000).toLocaleString()}
+              <span className="font-mono font-bold text-ink" suppressHydrationWarning>
+                ${getInputValue(scenario.inputs, "budget", 250000).toLocaleString("en-US")}
               </span>
             </div>
             <div className="flex justify-between py-2 border-b border-neutral/60">
@@ -320,8 +320,8 @@ export default function ScenarioDetailPage() {
             </div>
             <div className="flex justify-between py-2 border-b border-neutral/60">
               <span className="text-ink/60">Actual Cost</span>
-              <span className="font-mono font-bold text-ink">
-                {out.computed?.actualCost !== undefined ? `$${Math.round(out.computed.actualCost).toLocaleString()}` : "—"}
+              <span className="font-mono font-bold text-ink" suppressHydrationWarning>
+                {out.computed?.actualCost !== undefined ? `$${Math.round(out.computed.actualCost).toLocaleString("en-US")}` : "—"}
               </span>
             </div>
             <div className="flex justify-between py-2">

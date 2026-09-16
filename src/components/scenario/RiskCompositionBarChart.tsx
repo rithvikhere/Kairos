@@ -68,7 +68,7 @@ export function RiskCompositionBarChart({
     <div className="p-5 bg-white border border-neutral rounded-2xl shadow-xs space-y-4 text-ink">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-serif text-sm font-bold text-ink">Risk Composition Breakdown</h3>
+          <h3 className="font-serif text-base font-bold text-[#0f172a]">Risk Composition Breakdown</h3>
           <p className="text-xs text-ink/60">
             Evaluated risk dimensions ({activeKeys.length} active) contributing to composite risk score ({riskScore.toFixed(2)})
           </p>

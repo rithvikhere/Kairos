@@ -60,15 +60,15 @@ export const MonteCarloDistributionChart: React.FC<MonteCarloDistributionChartPr
   }));
 
   return (
-    <div className="p-6 rounded-2xl border border-neutral bg-[#faf8f4] shadow-card space-y-5">
+    <div className="p-6 rounded-2xl border border-neutral bg-[#282c2d] shadow-card space-y-5">
       {/* Header + Metric Tabs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h3 className="font-serif text-lg font-bold text-ink">
+          <h3 className="font-serif text-lg font-bold text-[#d0fcf4]">
             Monte Carlo Uncertainty Distribution
           </h3>
-          <p className="text-xs text-ink/60">
-            Evaluated across {monteCarlo.iterationsActuallyUsed.toLocaleString()} valid stochastic runs
+          <p className="text-xs text-ink/60" suppressHydrationWarning>
+            Evaluated across {monteCarlo.iterationsActuallyUsed.toLocaleString("en-US")} valid stochastic runs
           </p>
         </div>
 
@@ -97,30 +97,30 @@ export const MonteCarloDistributionChart: React.FC<MonteCarloDistributionChartPr
 
       {/* Probability Summary KPI Badges */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="p-3 rounded-xl border border-neutral bg-[#f5f2ec] text-center">
+        <div className="p-3 rounded-xl border border-neutral bg-[#222526] text-center">
           <div className="text-[11px] font-semibold text-ink/70 uppercase tracking-wider">Feasible Rate</div>
-          <div className="font-serif text-xl font-bold text-[#1f2421] mt-1">
+          <div className="font-serif text-xl font-bold text-[#d0fcf4] mt-1">
             {(monteCarlo.feasibleRate * 100).toFixed(0)}%
           </div>
         </div>
 
-        <div className="p-3 rounded-xl border border-neutral bg-[#f5f2ec] text-center">
+        <div className="p-3 rounded-xl border border-neutral bg-[#222526] text-center">
           <div className="text-[11px] font-semibold text-ink/70 uppercase tracking-wider">On-Time Prob</div>
-          <div className="font-serif text-xl font-bold text-[#234e63] mt-1">
+          <div className="font-serif text-xl font-bold text-[#78dec8] mt-1">
             {(monteCarlo.probabilityOnTime * 100).toFixed(0)}%
           </div>
         </div>
 
-        <div className="p-3 rounded-xl border border-neutral bg-[#f5f2ec] text-center">
+        <div className="p-3 rounded-xl border border-neutral bg-[#222526] text-center">
           <div className="text-[11px] font-semibold text-ink/70 uppercase tracking-wider">Within Budget Prob</div>
-          <div className="font-serif text-xl font-bold text-[#234e63] mt-1">
+          <div className="font-serif text-xl font-bold text-[#78dec8] mt-1">
             {(monteCarlo.probabilityWithinBudget * 100).toFixed(0)}%
           </div>
         </div>
       </div>
 
       {/* Percentiles Bar Summary */}
-      <div className="p-3 rounded-xl border border-neutral/80 bg-[#faf8f4] flex flex-wrap items-center justify-between text-xs gap-2 font-mono">
+      <div className="p-3 rounded-xl border border-neutral/80 bg-[#222526] flex flex-wrap items-center justify-between text-xs gap-2 font-mono">
         <div>
           <span className="text-ink/40">p10:</span>{" "}
           <span className="font-bold">{config.format(summary.percentiles.p10)}</span>
@@ -149,23 +149,23 @@ export const MonteCarloDistributionChart: React.FC<MonteCarloDistributionChartPr
           <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
             <XAxis
               dataKey="range"
-              tick={{ fill: "#1f2421", fontSize: 10 }}
+              tick={{ fill: "#d0fcf4", fontSize: 10 }}
               interval={0}
               angle={-25}
               textAnchor="end"
               height={45}
             />
-            <YAxis tick={{ fill: "#1f2421", fontSize: 10 }} />
+            <YAxis tick={{ fill: "#d0fcf4", fontSize: 10 }} />
             <Tooltip
               contentStyle={{
-                backgroundColor: "#faf8f4",
-                borderColor: "#e8e3d8",
+                backgroundColor: "#282c2d",
+                borderColor: "#454d4b",
                 borderRadius: "8px",
                 fontSize: "12px",
-                color: "#1f2421",
+                color: "#d0fcf4",
               }}
               formatter={(value: any) => [`${value} runs`, "Frequency"]}
-              labelStyle={{ fontWeight: "bold", color: "#3a5a6b" }}
+              labelStyle={{ fontWeight: "bold", color: "#78dec8" }}
             />
             <Bar dataKey="count" fill="#3a5a6b" radius={[4, 4, 0, 0]} />
             {config.target !== undefined && (

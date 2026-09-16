@@ -14,18 +14,20 @@ import { FinalCtaSection } from "../components/landing/FinalCtaSection.js";
  */
 export default function LandingPage() {
   return (
-    <div className="w-full bg-[#f6f4ef] text-[#221f1b] overflow-x-hidden selection:bg-[#2c4356] selection:text-[#f6f4ef]">
-      {/* 1. Hero Section: Editorial typography + Orchestrated curve draw-in */}
-      <HeroSection />
+    <div className="relative w-full bg-[#343839] text-[#d0fcf4] overflow-x-hidden selection:bg-[#2c4356] selection:text-[#d0fcf4]">
+      <div className="relative z-10">
+        {/* 1. Hero Section: Editorial typography + Orchestrated curve draw-in */}
+        <HeroSection />
 
-      {/* 2. Interactive Feature Showcase: Background mock + 5 pulsing hotspots */}
-      <FeatureShowcaseSection />
+        {/* 2. Interactive Feature Showcase: Background mock + 5 pulsing hotspots */}
+        <FeatureShowcaseSection />
 
-      {/* 3. Data Visualizations Section: Meaning-driven risk charts */}
-      <DataVisualizationsSection />
+        {/* 3. Data Visualizations Section: Meaning-driven risk charts */}
+        <DataVisualizationsSection />
 
-      {/* 4. Final CTA Section: Transition into the Kairos workspace */}
-      <FinalCtaSection />
+        {/* 4. Final CTA Section: Transition into the Kairos workspace */}
+        <FinalCtaSection />
+      </div>
     </div>
   );
 }

@@ -23,7 +23,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
 
   if (isStandalone) {
     return (
-      <main className="min-h-screen w-full bg-[#f6f4ef] text-[#221f1b]">
+      <main className="min-h-screen w-full bg-[#343839] text-[#d0fcf4]">
         {children}
       </main>
     );

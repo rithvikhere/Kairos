@@ -122,7 +122,7 @@ function buildUncertainInputs(
 
 function formatDiffValue(key: string, val: number | undefined): string {
   if (val === undefined || isNaN(val)) return "—";
-  if (key === "budget") return `$${Math.round(val).toLocaleString()}`;
+  if (key === "budget") return `$${Math.round(val).toLocaleString("en-US")}`;
   if (key === "headcount") return `${val} eng`;
   if (key === "deadlineWeeks") return `${val} wks`;
   if (key === "scope") return `${val} pts`;
@@ -612,6 +612,10 @@ function ProjectsDashboardContent() {
     }
   }, [baselineScenario, baselineConstraints, baselineSim, activeScenario, scenarioConstraints, simResult]);
 
+  // Monte Carlo execution state (base at 100 runs, increments by 100 on each run up to 2,500 cap)
+  const [mcRunCount, setMcRunCount] = useState(100);
+  const [isSimulatingMC, setIsSimulatingMC] = useState(false);
+
   // Re-run Monte Carlo dynamically when constraints change so scatter plot & distributions update live!
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -620,18 +624,17 @@ function ProjectsDashboardContent() {
         if (activeCount === 0) return;
         const uncertain = buildUncertainInputs(scenarioConstraints);
         const res = runMonteCarloSimulation(uncertain, {
-          iterations: 500,
+          iterations: mcRunCount,
           recordCheckpoints: { every: 25 },
           sampleTrials: { count: 120 },
         });
         setMcResult(res);
-        setMcRunCount(500);
       } catch {
         // ignore
       }
     }, 100);
     return () => clearTimeout(timer);
-  }, [scenarioConstraints]);
+  }, [scenarioConstraints, mcRunCount]);
 
   // Scenario tabs and search filter state (from third page)
   const [scenarioTab, setScenarioTab] = useState<"all" | "favorites" | "archived">("all");
@@ -677,8 +680,6 @@ function ProjectsDashboardContent() {
   const [nlExtractedChips, setNlExtractedChips] = useState<{ [k: string]: any } | null>(null);
 
   const [isCompareOpen, setIsCompareOpen] = useState(false);
-  const [isSimulatingMC, setIsSimulatingMC] = useState(false);
-  const [mcRunCount, setMcRunCount] = useState(1000);
 
   // Handle Project Creation directly on Second Page without redirecting away
   const handleCreateProject = async (e: React.FormEvent) => {
@@ -855,21 +856,22 @@ function ProjectsDashboardContent() {
     }
   };
 
-  // Trigger Monte Carlo Simulation (supports 2,500 iterations with probability distribution sampling)
+  // Trigger Monte Carlo Simulation (starts at base 1,000, increments by 100 per run up to cap of 2,500)
   const handleRunMonteCarlo = () => {
     setIsSimulatingMC(true);
     setShowProgressAnimation(true);
+    const nextCount = Math.min(2500, mcRunCount + 100);
+    setMcRunCount(nextCount);
     try {
       const activeCount = Object.values(scenarioConstraints).filter((s) => s?.enabled).length;
       if (activeCount > 0) {
         const uncertain = buildUncertainInputs(scenarioConstraints);
         const res = runMonteCarloSimulation(uncertain, {
-          iterations: 2500,
+          iterations: nextCount,
           recordCheckpoints: { every: 25 },
           sampleTrials: { count: 200 },
         });
         setMcResult(res);
-        setMcRunCount(2500);
       }
     } catch (err) {
       console.error("Monte Carlo run error:", err);
@@ -914,12 +916,17 @@ function ProjectsDashboardContent() {
         {/* Top Window Chrome Bar */}
         <div className="w-full flex items-center justify-between px-4 sm:px-6 py-2.5 bg-[#ede9e0] border-b border-[#221f1b]/10 text-xs font-sans text-[#221f1b]/60">
           <div className="flex items-center gap-2">
-            <span className="font-serif italic font-black tracking-widest text-base sm:text-lg text-[#2c4356]">
+            <span className="font-serif italic font-black tracking-widest text-base sm:text-lg text-[#0f172a]">
               KAIROS
             </span>
           </div>
 
           <div className="flex items-center gap-2.5 sm:gap-3">
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#0f172a] text-[#ffffff] font-bold text-[11px] shadow-xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#8ba888] animate-pulse" />
+              <span>Kairos Intelligence</span>
+            </span>
+
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#8ba888]/20 text-[#221f1b] font-medium text-[11px] border border-[#8ba888]/30">
               <span className="w-1.5 h-1.5 rounded-full bg-[#8ba888] animate-pulse" />
               <span className="hidden xs:inline">Deterministic Engine Active</span>
@@ -1283,7 +1290,7 @@ function ProjectsDashboardContent() {
                 <button
                   type="button"
                   onClick={handleRunMonteCarlo}
-                  disabled={isSimulatingMC}
+                  disabled={isSimulatingMC || mcRunCount >= 2500}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#2c4356] hover:bg-[#1d2e3b] text-[#f6f4ef] text-xs font-sans font-medium shadow-sm transition-colors disabled:opacity-75"
                 >
                   {isSimulatingMC ? (
@@ -1291,7 +1298,13 @@ function ProjectsDashboardContent() {
                   ) : (
                     <Play className="w-3.5 h-3.5 fill-current" />
                   )}
-                  <span>{isSimulatingMC ? "Sampling 2,500 runs..." : "Run Monte Carlo (2,500 Runs)"}</span>
+                  <span suppressHydrationWarning>
+                    {isSimulatingMC
+                      ? `Sampling ${mcRunCount.toLocaleString("en-US")} runs...`
+                      : mcRunCount >= 2500
+                      ? "Run Monte Carlo (2,500 - Cap)"
+                      : `Run Monte Carlo (${mcRunCount.toLocaleString("en-US")})`}
+                  </span>
                 </button>
               </div>
             </div>
@@ -1313,8 +1326,8 @@ function ProjectsDashboardContent() {
                 </div>
                 {simResult?.computed.actualCost !== undefined ? (
                   <>
-                    <div className="text-2xl font-serif font-bold text-[#221f1b] my-0.5">
-                      ${Math.round(simResult.computed.actualCost).toLocaleString()}
+                    <div className="text-2xl font-serif font-bold text-[#0f172a] my-0.5" suppressHydrationWarning>
+                      ${Math.round(simResult.computed.actualCost).toLocaleString("en-US")}
                     </div>
                     {simResult.computed.budgetUtilization !== undefined ? (
                       (() => {
@@ -1523,7 +1536,7 @@ function ProjectsDashboardContent() {
                   <div className="flex items-center justify-between pb-2 border-b border-[#221f1b]/10">
                     <div className="flex items-center gap-2">
                       <Sliders className="w-4 h-4 text-[#2c4356]" />
-                      <span className="text-xs font-bold text-[#221f1b]">
+                      <span className="text-sm sm:text-base font-bold text-[#0f172a]">
                         Project Levers ({activeLevers.length} active)
                       </span>
                     </div>
@@ -1546,7 +1559,7 @@ function ProjectsDashboardContent() {
                         const currentVal = scenarioConstraints[meta.key]?.value ?? meta.defaultValue;
                         const displayVal =
                           meta.key === "budget"
-                            ? `$${Math.round(currentVal).toLocaleString()}`
+                            ? `$${Math.round(currentVal).toLocaleString("en-US")}`
                             : meta.key === "headcount"
                             ? `${currentVal} engineers`
                             : meta.key === "deadlineWeeks"
@@ -1646,8 +1659,8 @@ function ProjectsDashboardContent() {
                   <div className="flex items-center justify-between pb-2 border-b border-[#221f1b]/10">
                     <div className="flex items-center gap-2">
                       <TrendingUp className="w-4 h-4 text-[#2c4356]" />
-                      <span className="text-xs font-bold text-[#221f1b]">
-                        Monte Carlo Distribution ({mcRunCount.toLocaleString()} Runs)
+                      <span className="text-sm sm:text-base font-bold text-[#0f172a]" suppressHydrationWarning>
+                        Monte Carlo Distribution ({mcRunCount.toLocaleString("en-US")} Runs)
                       </span>
                     </div>
                     <span className="text-[10px] text-[#221f1b]/50 font-mono">
@@ -1702,12 +1715,12 @@ function ProjectsDashboardContent() {
                   </div>
 
                   {/* Distribution Explanation & Dynamics */}
-                  <div className="p-2.5 rounded-xl bg-[#faf8f4] border border-[#221f1b]/5 text-[11px] font-sans text-[#221f1b]/75 space-y-1">
+                  <div className="p-3 rounded-xl bg-[#faf8f4] border border-[#221f1b]/5 text-xs sm:text-[13px] font-sans text-[#221f1b]/85 space-y-1.5">
                     <p className="leading-relaxed">
                       <strong>Distribution Dynamics:</strong> Simulated trial outcomes are evaluated against the {deadlineWeeks}-week target deadline.
                       Histogram bars indicate timeline density (<span className="text-[#2c4356] font-semibold">blue</span> = on-time completion, <span className="text-[#c98a3e] font-semibold">amber</span> = &le; 2 weeks slippage, and <span className="text-[#b5502f] font-semibold">terracotta</span> = critical schedule breach).
                     </p>
-                    <p className="text-[10.5px] text-[#221f1b]/60 italic">
+                    <p className="text-[11.5px] sm:text-xs text-[#221f1b]/70 italic">
                       90% confidence interval projects delivery between {(mcResult?.estimatedTimeWeeks?.percentiles?.p10 ?? (simulation.estimatedWeeks * 0.9)).toFixed(1)} wks (p10) and {(mcResult?.estimatedTimeWeeks?.percentiles?.p90 ?? (simulation.estimatedWeeks * 1.25)).toFixed(1)} wks (p90).
                     </p>
                   </div>
@@ -1719,20 +1732,20 @@ function ProjectsDashboardContent() {
                 </div>
 
                 {/* Dynamic Real-Time Simulation Status / Issue Summary (2-3 lines) */}
-                <div className="p-3.5 rounded-2xl bg-[#faf8f4] border border-[#2c4356]/20 shadow-xs space-y-1.5 font-sans">
+                <div className="p-4 rounded-2xl bg-[#faf8f4] border border-[#2c4356]/20 shadow-xs space-y-2 font-sans">
                   <div className="flex items-center gap-2">
                     {simResult?.feasible ? (
                       <CheckCircle2 className="w-4 h-4 text-[#2b5336]" />
                     ) : (
                       <AlertTriangle className="w-4 h-4 text-[#b5502f]" />
                     )}
-                    <span className="font-bold text-xs text-[#221f1b]">
+                    <span className="font-bold text-sm sm:text-base text-[#0f172a]">
                       {simResult?.feasible
                         ? "Delivery Status: Plan On Track & Feasible"
                         : "Delivery Alert: Plan Infeasible Under Current Levers"}
                     </span>
                   </div>
-                  <div className="text-[11.5px] text-[#221f1b]/80 leading-relaxed space-y-1">
+                  <div className="text-xs sm:text-[13px] text-[#221f1b]/85 leading-relaxed space-y-1.5" suppressHydrationWarning>
                     <p>
                       • <strong>Schedule:</strong> Estimated delivery is <strong>{simulation.estimatedWeeks.toFixed(1)} weeks</strong>{" "}
                       {simulation.scheduleVarianceWeeks > 0 ? (
@@ -1747,14 +1760,14 @@ function ProjectsDashboardContent() {
                       {" "}with <strong>{(mcResult ? mcResult.probabilityOnTime * 100 : simulation.probOnTime).toFixed(0)}% completion certainty</strong>.
                     </p>
                     <p>
-                      • <strong>Cost & Labor:</strong> Projected cost is <strong>${Math.round(simulation.estimatedCost).toLocaleString()}</strong>{" "}
+                      • <strong>Cost & Labor:</strong> Projected cost is <strong>${Math.round(simulation.estimatedCost).toLocaleString("en-US")}</strong>{" "}
                       {simulation.estimatedCost - budget > 0 ? (
                         <span className="text-[#b5502f] font-semibold">
-                          (${Math.round(simulation.estimatedCost - budget).toLocaleString()} over budget)
+                          (${Math.round(simulation.estimatedCost - budget).toLocaleString("en-US")} over budget)
                         </span>
                       ) : (
                         <span className="text-[#2b5336] font-semibold">
-                          (${Math.round(Math.abs(simulation.estimatedCost - budget)).toLocaleString()} remaining margin)
+                          (${Math.round(Math.abs(simulation.estimatedCost - budget)).toLocaleString("en-US")} remaining margin)
                         </span>
                       )}
                       ; {headcount} engineers generate {simulation.dragPenalty.toFixed(2)} drag penalty (Brooks&apos;s Law).
@@ -1779,7 +1792,7 @@ function ProjectsDashboardContent() {
               <div className="flex items-center justify-between pb-2 border-b border-[#221f1b]/10">
                 <div className="flex items-center gap-2">
                   <TrendingUp className="w-4 h-4 text-[#2c4356]" />
-                  <span className="text-sm font-bold text-[#221f1b] font-serif">
+                  <span className="text-base sm:text-lg font-bold text-[#0f172a] font-serif">
                     Monte Carlo Convergence Analysis
                   </span>
                 </div>
@@ -1799,7 +1812,7 @@ function ProjectsDashboardContent() {
               <div className="md:col-span-1 p-4 rounded-2xl bg-white/90 border border-[#221f1b]/10 shadow-xs space-y-2.5 font-sans flex flex-col justify-between">
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[#221f1b]">Brooks&apos;s Law Model</span>
+                    <span className="text-sm sm:text-base font-bold text-[#0f172a]">Brooks&apos;s Law Model</span>
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#2c4356]/10 text-[#2c4356] font-mono font-medium">
                       Overhead Calculation
                     </span>
@@ -1807,11 +1820,11 @@ function ProjectsDashboardContent() {
                   <div className="text-2xl font-serif font-bold text-[#2c4356]">
                     {simulation.overheadFactor.toFixed(2)}x
                   </div>
-                  <div className="text-xs text-[#221f1b]/70 font-medium">
+                  <div className="text-xs sm:text-[13px] text-[#221f1b]/70 font-medium">
                     Communication &amp; Ramp Overhead Factor
                   </div>
                 </div>
-                <div className="pt-2 border-t border-[#221f1b]/10 text-[11px] text-[#221f1b]/60 space-y-1">
+                <div className="pt-2 border-t border-[#221f1b]/10 text-xs sm:text-[13px] text-[#221f1b]/80 space-y-1">
                   <div>
                     • <strong>{simulation.dragPenalty.toFixed(2)}</strong> effective eng communication drag
                   </div>
@@ -1826,16 +1839,16 @@ function ProjectsDashboardContent() {
                 <div className="w-8 h-8 rounded-lg bg-[#2c4356]/10 text-[#2c4356] flex items-center justify-center flex-shrink-0 mt-0.5">
                   <Sparkles className="w-4 h-4 text-[#2c4356]" />
                 </div>
-                <div className="space-y-1 text-xs">
+                <div className="space-y-1.5 text-xs">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-[#221f1b]">
+                    <span className="font-bold text-sm sm:text-base text-[#0f172a]">
                       Bounded AI Scenario Attribution
                     </span>
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#2c4356]/10 text-[#2c4356] font-mono font-medium">
                       Zero Hallucination
                     </span>
                   </div>
-                  <p className="text-[#221f1b]/80 leading-relaxed font-sans text-[11.5px]">
+                  <p className="text-[#221f1b]/85 leading-relaxed font-sans text-xs sm:text-[13px]">
                     {headcount === 10 && deadlineWeeks === 14 && budget === 250000 && scope === 140 ? (
                       <>
                         Adding 4 engineers reduced raw sprint capacity requirements by 2.1 weeks, but generated 2.59 equivalent engineers of communication drag (Brooks&apos;s Law). Net delivery date shifts backward by 2.4 weeks past the 14-week deadline.
@@ -1869,160 +1882,186 @@ function ProjectsDashboardContent() {
         </div>
       </div>
 
-      {/* Compare Scenarios Dialog Modal */}
+      {/* Compare Scenarios Dialog Modal - Landscape Mode */}
       {isCompareOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
-          <div className="w-full max-w-xl rounded-2xl bg-[#faf8f4] border border-[#221f1b]/20 shadow-2xl p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between pb-3 border-b border-[#221f1b]/10">
-              <div className="flex items-center gap-2 font-serif text-xl sm:text-2xl font-bold text-[#221f1b]">
+          <div className="w-full max-w-5xl xl:max-w-6xl max-h-[88vh] rounded-2xl bg-[#faf8f4] border border-[#221f1b]/20 shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="px-6 py-3.5 border-b border-[#221f1b]/10 flex items-center justify-between bg-white shrink-0">
+              <div className="flex items-center gap-2.5 font-serif text-xl sm:text-2xl font-bold text-[#0f172a]">
                 <GitCompare className="w-5 h-5 text-[#2c4356]" />
                 <span>Scenario Comparison & Attribution</span>
+                <span className="hidden sm:inline-block text-[11px] font-sans font-medium px-2.5 py-0.5 rounded-full bg-[#2c4356]/10 text-[#2c4356] border border-[#2c4356]/20 ml-2">
+                  Landscape Mode
+                </span>
               </div>
               <button
                 type="button"
                 onClick={() => setIsCompareOpen(false)}
-                className="p-1 rounded-lg text-[#221f1b]/60 hover:text-[#221f1b] hover:bg-[#e8e3d8]"
+                className="p-1.5 rounded-lg text-[#221f1b]/60 hover:text-[#221f1b] hover:bg-[#e8e3d8] transition-colors"
+                aria-label="Close comparison modal"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Side by side comparison table */}
-            <div className="space-y-4 font-sans text-xs">
-              <div className="grid grid-cols-3 gap-3 p-3 rounded-xl bg-[#ede9e0]/60 font-mono text-[11px] text-[#221f1b]/70">
-                <div>Parameter</div>
-                <div className="font-bold text-[#221f1b]">{baselineScenario?.name ?? "Baseline Plan"}</div>
-                <div className="font-bold text-[#2c4356]">{activeScenario.name} (Live Edits)</div>
+            {/* Landscape 2-Column Body: Values to the Left, Charts to the Right */}
+            <div className="p-6 overflow-y-auto flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              {/* LEFT COLUMN: Values, Parameter Diffs, Core Metrics, Primary Driver */}
+              <div className="lg:col-span-7 space-y-4 font-sans text-xs">
+                {/* Table Header Pill */}
+                <div className="grid grid-cols-3 gap-3 p-3 rounded-xl bg-[#ede9e0]/80 font-mono text-[11px] text-[#221f1b]/70 border border-[#221f1b]/10">
+                  <div className="font-semibold text-[#0f172a]">Parameter</div>
+                  <div className="font-bold text-[#0f172a]">{baselineScenario?.name ?? "Baseline Plan"}</div>
+                  <div className="font-bold text-[#2c4356]">{activeScenario.name} (Live Edits)</div>
+                </div>
+
+                {/* Diff rows list */}
+                <div className="rounded-xl border border-[#221f1b]/10 bg-white/90 divide-y divide-[#221f1b]/10 max-h-[260px] overflow-y-auto shadow-2xs">
+                  {/* Dynamically render all changed or active parameters */}
+                  {liveDiff?.inputDiff && Object.keys(liveDiff.inputDiff).length > 0 ? (
+                    <>
+                      {!Object.values(liveDiff.inputDiff).some((d) => d && d.delta !== 0) && (
+                        <div className="py-2.5 px-3 text-center text-ink/60 text-[11px] italic bg-[#ede9e0]/20">
+                          All constraint lever inputs match baseline values.
+                        </div>
+                      )}
+                      {Object.entries(liveDiff.inputDiff).map(([key, delta]) => {
+                        if (!delta) return null;
+                        const meta = CONSTRAINT_CATALOGUE.find((c) => c.key === key);
+                        const label = meta?.label ?? key;
+                        return (
+                          <div key={key} className="grid grid-cols-3 gap-3 py-2 px-3 items-center hover:bg-[#faf8f4] transition-colors">
+                            <span className="text-[#221f1b]/70 font-medium truncate">{label}</span>
+                            <span className="font-mono text-[#221f1b]/80">
+                              {formatDiffValue(key, delta.from)}
+                            </span>
+                            <span className="font-mono font-bold text-[#2c4356] flex items-center gap-1">
+                              {formatDiffValue(key, delta.to)}
+                              {delta.delta !== 0 && (
+                                <span
+                                  className={`text-[10px] font-normal ${
+                                    delta.direction === "increased" ? "text-[#b5502f]" : "text-[#2b5336]"
+                                  }`}
+                                >
+                                  ({delta.delta > 0 ? `+${delta.delta}` : delta.delta})
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </>
+                  ) : (
+                    <div className="py-2.5 px-3 text-center text-ink/50 text-[11px] italic">
+                      All constraint lever inputs match baseline values.
+                    </div>
+                  )}
+
+                  {/* Core Output Metrics Comparison */}
+                  <div className="grid grid-cols-3 gap-3 py-2 px-3 items-center bg-[#ede9e0]/35 font-medium" suppressHydrationWarning>
+                    <span className="text-[#0f172a] font-semibold">Estimated Cost</span>
+                    <span className="font-mono">
+                      {baselineSim?.computed.actualCost !== undefined
+                        ? `$${Math.round(baselineSim.computed.actualCost).toLocaleString("en-US")}`
+                        : "$200,000"}
+                    </span>
+                    <span className="font-mono font-bold text-[#2c4356]">
+                      {simResult?.computed.actualCost !== undefined
+                        ? `$${Math.round(simResult.computed.actualCost).toLocaleString("en-US")}`
+                        : "Not evaluated"}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3 py-2 px-3 items-center">
+                    <span className="text-[#0f172a] font-semibold">Delivery Duration</span>
+                    <span className="font-mono">
+                      {baselineSim?.computed.estimatedTimeWeeks !== undefined
+                        ? `${baselineSim.computed.estimatedTimeWeeks.toFixed(1)} wks`
+                        : "19.8 wks"}
+                    </span>
+                    <span className="font-mono font-bold text-[#2c4356]">
+                      {simResult?.computed.estimatedTimeWeeks !== undefined
+                        ? `${simResult.computed.estimatedTimeWeeks.toFixed(1)} wks`
+                        : "Not evaluated"}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3 py-2 px-3 items-center bg-[#ede9e0]/35 font-medium">
+                    <span className="text-[#0f172a] font-semibold">Risk Score</span>
+                    <span className="font-mono text-[#2b5336] font-bold">
+                      {baselineSim ? `${baselineSim.riskScore.toFixed(2)} (${baselineSim.feasible ? "Feasible" : "Infeasible"})` : "24.00 (Feasible)"}
+                    </span>
+                    <span
+                      className={`font-mono font-bold ${
+                        simResult?.feasible ? "text-[#2b5336]" : "text-[#b5502f]"
+                      }`}
+                    >
+                      {simResult
+                        ? `${simResult.riskScore.toFixed(2)} (${simResult.feasible ? "Feasible" : "Infeasible"})`
+                        : "—"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Primary Isolated Risk Driver summary */}
+                <div className="p-3.5 rounded-xl bg-[#faf8f4] border border-[#2c4356]/20 text-[11.5px] space-y-1 shadow-2xs">
+                  <div className="font-bold text-[#0f172a] flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-[#2c4356]" />
+                    <span>Primary Isolated Risk Driver</span>
+                  </div>
+                  <p className="text-[#221f1b]/80 leading-relaxed">
+                    {liveDiff?.attribution && liveDiff.attribution.length > 0 ? (
+                      (() => {
+                        const top = liveDiff.attribution[0]!;
+                        const meta = CONSTRAINT_CATALOGUE.find((c) => c.key === top.field);
+                        const label = meta?.label ?? top.field;
+                        const sign = top.isolatedRiskContribution > 0 ? "+" : "";
+                        return `Isolated sensitivity analysis shows that changing ${label} drove ${sign}${top.isolatedRiskContribution.toFixed(1)} points of risk shift.`;
+                      })()
+                    ) : (
+                      "No isolated risk driver identified — scenario parameters match baseline."
+                    )}
+                  </p>
+                </div>
               </div>
 
-              <div className="divide-y divide-[#221f1b]/10 max-h-[260px] overflow-y-auto">
-                {/* Dynamically render all changed or active parameters */}
-                {liveDiff?.inputDiff && Object.keys(liveDiff.inputDiff).length > 0 ? (
-                  <>
-                    {!Object.values(liveDiff.inputDiff).some((d) => d && d.delta !== 0) && (
-                      <div className="py-2 px-3 text-center text-ink/60 text-[11px] italic bg-[#ede9e0]/20">
-                        All constraint lever inputs match baseline values.
-                      </div>
-                    )}
-                    {Object.entries(liveDiff.inputDiff).map(([key, delta]) => {
-                      if (!delta) return null;
-                      const meta = CONSTRAINT_CATALOGUE.find((c) => c.key === key);
-                      const label = meta?.label ?? key;
-                      return (
-                        <div key={key} className="grid grid-cols-3 gap-3 py-2 px-3 items-center">
-                          <span className="text-[#221f1b]/70 font-medium">{label}</span>
-                          <span className="font-mono text-[#221f1b]/80">
-                            {formatDiffValue(key, delta.from)}
-                          </span>
-                          <span className="font-mono font-bold text-[#2c4356] flex items-center gap-1">
-                            {formatDiffValue(key, delta.to)}
-                            {delta.delta !== 0 && (
-                              <span
-                                className={`text-[10px] font-normal ${
-                                  delta.direction === "increased" ? "text-[#b5502f]" : "text-[#2b5336]"
-                                }`}
-                              >
-                                ({delta.delta > 0 ? `+${delta.delta}` : delta.delta})
-                              </span>
-                            )}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </>
+              {/* RIGHT COLUMN: Charts to the Right */}
+              <div className="lg:col-span-5 space-y-3 font-sans text-xs">
+                <div className="flex items-center justify-between pb-1.5 border-b border-[#221f1b]/10">
+                  <span className="font-bold text-sm text-[#0f172a]">
+                    Sensitivity Tornado Analysis
+                  </span>
+                  <span className="text-[10px] text-[#221f1b]/50 font-mono">
+                    (|Δ Risk Score| per Lever)
+                  </span>
+                </div>
+
+                {/* Sensitivity Tornado Chart Card */}
+                {liveDiff && liveDiff.attribution.length > 0 ? (
+                  <div className="rounded-xl overflow-hidden shadow-2xs">
+                    <SensitivityTornadoChart attribution={liveDiff.attribution} />
+                  </div>
                 ) : (
-                  <div className="py-2.5 px-3 text-center text-ink/50 text-[11px] italic">
-                    All constraint lever inputs match baseline values.
+                  <div className="p-6 rounded-2xl bg-white border border-neutral text-center text-ink/50 text-xs space-y-2">
+                    <p className="font-semibold text-[#0f172a]">All constraint levers match baseline.</p>
+                    <p className="text-[11px] text-[#221f1b]/60 leading-relaxed">
+                      Adjust any parameter (such as Headcount, Deadline, or Budget) on the dashboard to visualize real-time sensitivity and isolated risk shifts here.
+                    </p>
                   </div>
                 )}
-
-                {/* Core Output Metrics Comparison */}
-                <div className="grid grid-cols-3 gap-3 py-2 px-3 items-center bg-[#ede9e0]/30 font-medium">
-                  <span className="text-[#221f1b]">Estimated Cost</span>
-                  <span className="font-mono">
-                    {baselineSim?.computed.actualCost !== undefined
-                      ? `$${Math.round(baselineSim.computed.actualCost).toLocaleString()}`
-                      : "$200,000"}
-                  </span>
-                  <span className="font-mono font-bold text-[#2c4356]">
-                    {simResult?.computed.actualCost !== undefined
-                      ? `$${Math.round(simResult.computed.actualCost).toLocaleString()}`
-                      : "Not evaluated"}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-3 gap-3 py-2 px-3 items-center">
-                  <span className="text-[#221f1b]">Delivery Duration</span>
-                  <span className="font-mono">
-                    {baselineSim?.computed.estimatedTimeWeeks !== undefined
-                      ? `${baselineSim.computed.estimatedTimeWeeks.toFixed(1)} wks`
-                      : "19.8 wks"}
-                  </span>
-                  <span className="font-mono font-bold text-[#2c4356]">
-                    {simResult?.computed.estimatedTimeWeeks !== undefined
-                      ? `${simResult.computed.estimatedTimeWeeks.toFixed(1)} wks`
-                      : "Not evaluated"}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-3 gap-3 py-2 px-3 items-center bg-[#ede9e0]/30 font-medium">
-                  <span className="text-[#221f1b]">Risk Score</span>
-                  <span className="font-mono text-[#2b5336] font-bold">
-                    {baselineSim ? `${baselineSim.riskScore.toFixed(2)} (${baselineSim.feasible ? "Feasible" : "Infeasible"})` : "24.00 (Feasible)"}
-                  </span>
-                  <span
-                    className={`font-mono font-bold ${
-                      simResult?.feasible ? "text-[#2b5336]" : "text-[#b5502f]"
-                    }`}
-                  >
-                    {simResult
-                      ? `${simResult.riskScore.toFixed(2)} (${simResult.feasible ? "Feasible" : "Infeasible"})`
-                      : "—"}
-                  </span>
-                </div>
               </div>
-
-              {/* Attribution summary */}
-              <div className="p-3.5 rounded-xl bg-[#faf8f4] border border-[#2c4356]/20 text-[11.5px] space-y-1">
-                <div className="font-semibold text-[#221f1b] flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-[#2c4356]" />
-                  <span>Primary Isolated Risk Driver</span>
-                </div>
-                <p className="text-[#221f1b]/80">
-                  {liveDiff?.attribution && liveDiff.attribution.length > 0 ? (
-                    (() => {
-                      const top = liveDiff.attribution[0]!;
-                      const meta = CONSTRAINT_CATALOGUE.find((c) => c.key === top.field);
-                      const label = meta?.label ?? top.field;
-                      const sign = top.isolatedRiskContribution > 0 ? "+" : "";
-                      return `Isolated sensitivity analysis shows that changing ${label} drove ${sign}${top.isolatedRiskContribution.toFixed(1)} points of risk shift.`;
-                    })()
-                  ) : (
-                    "No isolated risk driver identified — scenario parameters match baseline."
-                  )}
-                </p>
-              </div>
-              {/* Sensitivity Tornado Chart */}
-              {liveDiff && liveDiff.attribution.length > 0 && (
-                <div className="pt-3 border-t border-[#221f1b]/10 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-xs text-[#221f1b]">
-                      Sensitivity Tornado Analysis (|Δ Risk Score| per Lever)
-                    </span>
-                    <span className="text-[10px] text-[#221f1b]/50 font-mono">
-                      Active changed constraints
-                    </span>
-                  </div>
-                  <SensitivityTornadoChart attribution={liveDiff.attribution} />
-                </div>
-              )}
             </div>
 
-            <div className="flex justify-end pt-2 border-t border-[#221f1b]/10">
+            {/* Modal Footer */}
+            <div className="px-6 py-3.5 border-t border-[#221f1b]/10 bg-white flex items-center justify-between shrink-0">
+              <span className="text-[11px] font-mono text-[#221f1b]/60 hidden sm:inline">
+                Deterministic comparison against baseline scenario
+              </span>
               <button
                 type="button"
                 onClick={() => setIsCompareOpen(false)}
-                className="px-4 py-2 rounded-lg bg-[#2c4356] text-white text-xs font-semibold hover:bg-[#1d2e3b] transition-colors"
+                className="px-5 py-2 rounded-lg bg-[#2c4356] text-white text-xs font-semibold hover:bg-[#1d2e3b] transition-colors shadow-xs ml-auto"
               >
                 Done
               </button>
@@ -2052,7 +2091,7 @@ function ProjectsDashboardContent() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
           <div className="w-full max-w-lg rounded-2xl bg-[#faf8f4] border border-[#221f1b]/20 shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between pb-3 border-b border-[#221f1b]/10">
-              <div className="flex items-center gap-2 font-serif text-xl sm:text-2xl font-bold text-[#221f1b]">
+              <div className="flex items-center gap-2 font-serif text-xl sm:text-2xl font-bold text-[#0f172a]">
                 <Plus className="w-5 h-5 text-[#2c4356]" />
                 <span>Build New Scenario</span>
               </div>
@@ -2144,7 +2183,7 @@ function ProjectsDashboardContent() {
                 </div>
                 <div>
                   <span className="text-[#221f1b]/50 block text-[9px]">BUDGET</span>
-                  <span className="font-bold">${budget.toLocaleString()}</span>
+                  <span className="font-bold" suppressHydrationWarning>${budget.toLocaleString("en-US")}</span>
                 </div>
                 <div>
                   <span className="text-[#221f1b]/50 block text-[9px]">SCOPE</span>
@@ -2177,7 +2216,7 @@ function ProjectsDashboardContent() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
           <div className="w-full max-w-md rounded-2xl bg-[#faf8f4] border border-[#221f1b]/20 shadow-2xl p-6 space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-[#221f1b]/10">
-              <h3 className="font-serif text-lg sm:text-xl font-bold text-[#221f1b]">Edit Project Tags</h3>
+              <h3 className="font-serif text-lg sm:text-xl font-bold text-[#0f172a]">Edit Project Tags</h3>
               <button
                 type="button"
                 onClick={() => setIsEditTagsOpen(false)}
