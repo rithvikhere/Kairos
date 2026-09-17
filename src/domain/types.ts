@@ -59,10 +59,16 @@ export interface ConstraintSetting {
 }
 
 /**
- * Uniform inputs for deterministic simulation: an all-optional dictionary of constraints.
+ * Uniform inputs for deterministic simulation: an all-optional dictionary of constraints,
+ * with optional backwards-compatible flat levers.
  */
 export interface ScenarioInputs {
-  constraints: Partial<Record<ConstraintKey, ConstraintSetting>>;
+  constraints?: Partial<Record<ConstraintKey, ConstraintSetting>>;
+  headcount?: number;
+  budget?: number;
+  deadlineWeeks?: number;
+  scope?: number;
+  [key: string]: any;
 }
 
 /**

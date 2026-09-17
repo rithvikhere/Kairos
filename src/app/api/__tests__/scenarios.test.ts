@@ -55,10 +55,10 @@ describe("Scenarios API Routes", () => {
 
       const expected = simulate(inputs);
       expect(body.data.deterministic_output.estimatedTimeWeeks).toBeCloseTo(
-        expected.estimatedTimeWeeks,
+        expected.estimatedTimeWeeks!,
         5
       );
-      expect(body.data.deterministic_output.actualCost).toBeCloseTo(expected.actualCost, 5);
+      expect(body.data.deterministic_output.actualCost).toBeCloseTo(expected.actualCost!, 5);
       expect(body.data.deterministic_output.riskScore).toBeCloseTo(expected.riskScore, 5);
       expect(body.data.monte_carlo_output).toBeNull();
     });
@@ -174,10 +174,10 @@ describe("Scenarios API Routes", () => {
 
       // Must exactly match server-computed simulate(inputs)
       expect(body.data.deterministic_output.estimatedTimeWeeks).toBeCloseTo(
-        realExpected.estimatedTimeWeeks,
+        realExpected.estimatedTimeWeeks!,
         5
       );
-      expect(body.data.deterministic_output.actualCost).toBeCloseTo(realExpected.actualCost, 5);
+      expect(body.data.deterministic_output.actualCost).toBeCloseTo(realExpected.actualCost!, 5);
       expect(body.data.deterministic_output.riskScore).toBeCloseTo(realExpected.riskScore, 5);
     });
   });

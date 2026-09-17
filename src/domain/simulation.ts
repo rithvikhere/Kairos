@@ -225,10 +225,12 @@ export function simulate(rawInputs: ScenarioInputs | any): SimulationResult {
     throw new InvalidScenarioError("Scenario inputs must have a constraints object");
   }
 
+  const constraints = inputs.constraints;
+
   // Extract active constraints (enabled: true)
-  const allConstraintKeys = Object.keys(inputs.constraints) as ConstraintKey[];
+  const allConstraintKeys = Object.keys(constraints) as ConstraintKey[];
   const activeConstraints = allConstraintKeys.filter(
-    (k) => inputs.constraints[k]?.enabled === true
+    (k) => constraints[k]?.enabled === true
   );
 
   if (activeConstraints.length === 0) {
@@ -237,7 +239,7 @@ export function simulate(rawInputs: ScenarioInputs | any): SimulationResult {
 
   // Validate values of active constraints
   for (const key of activeConstraints) {
-    const setting = inputs.constraints[key];
+    const setting = constraints[key];
     if (!setting || typeof setting.value !== "number" || !Number.isFinite(setting.value)) {
       throw new InvalidScenarioError(`Constraint '${key}' must have a finite numeric value`);
     }

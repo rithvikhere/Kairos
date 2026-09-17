@@ -98,7 +98,7 @@ export function _resetPgConnectionState(): void {
 export const _pgConnector = {
   connect: async (dbUrl: string): Promise<any> => {
     const pgModule = "pg";
-    const pg: any = await import(/* @vite-ignore */ pgModule);
+    const pg: any = await import(/* webpackIgnore: true */ /* @vite-ignore */ pgModule);
     const Pool = (pg.default && pg.default.Pool) || pg.Pool;
     const candidatePool = new Pool({ connectionString: dbUrl });
     const client = await candidatePool.connect();

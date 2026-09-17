@@ -67,7 +67,10 @@ function getAspect(rowIndex: number, itemIndex: number, minAspect: number, maxAs
   return Number((minAspect + ratio * (maxAspect - minAspect)).toFixed(2));
 }
 
-export const ReelGallery: React.FC<ReelGalleryProps> = ({
+// Module-scoped persistent storage so reel offsets are never lost or reset to 0 across renders, scrolls, or remounts
+const persistentReelOffsets = new Map<number, number[]>();
+
+const ReelGalleryComponent: React.FC<ReelGalleryProps> = ({
   images = DEFAULT_PHOTOS,
   rows = 5,
   rowHeight = 96,
@@ -92,6 +95,18 @@ export const ReelGallery: React.FC<ReelGalleryProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const trackRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [reducedMotion, setReducedMotion] = useState(false);
+
+  // Persistent row offset tracking: never resets to 0 when user scrolls away and returns
+  const offsetsRef = useRef<number[]>([]);
+  if (offsetsRef.current.length !== rows) {
+    const existing = persistentReelOffsets.get(rows);
+    if (existing && existing.length === rows) {
+      offsetsRef.current = existing;
+    } else {
+      offsetsRef.current = new Array(rows).fill(0);
+      persistentReelOffsets.set(rows, offsetsRef.current);
+    }
+  }
 
   // Check for prefers-reduced-motion
   useEffect(() => {
@@ -157,8 +172,17 @@ export const ReelGallery: React.FC<ReelGalleryProps> = ({
 
     let animId: number;
     let lastTime = performance.now();
-    // Offset tracking per row
-    const offsets = new Array(rows).fill(0);
+    const offsets = offsetsRef.current;
+
+    // Immediately position tracks at current drift positions to avoid any reset to start
+    for (let r = 0; r < rows; r++) {
+      const row = rowData[r];
+      const track = trackRefs.current[r];
+      if (row && track) {
+        const wrapped = (((offsets[r]! % row.cycleWidth) + row.cycleWidth) % row.cycleWidth);
+        track.style.transform = `translate3d(${-wrapped}px, 0, 0)`;
+      }
+    }
 
     const tick = (now: number) => {
       const deltaSeconds = Math.min((now - lastTime) / 1000, 0.1); // Clamp delta to avoid huge jumps
@@ -282,4 +306,5 @@ export const ReelGallery: React.FC<ReelGalleryProps> = ({
   );
 };
 
+export const ReelGallery = React.memo(ReelGalleryComponent);
 export default ReelGallery;

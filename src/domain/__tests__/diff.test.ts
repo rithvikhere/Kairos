@@ -131,10 +131,10 @@ describe("Phase 4 — Diff Engine", () => {
       expect(diff.scenarioBId).toBe(scenario.id);
 
       // Input diff
-      expect(diff.inputDiff.budget.direction).toBe("unchanged");
-      expect(diff.inputDiff.headcount.direction).toBe("unchanged");
-      expect(diff.inputDiff.deadlineWeeks.direction).toBe("unchanged");
-      expect(diff.inputDiff.scope.direction).toBe("unchanged");
+      expect(diff.inputDiff.budget!.direction).toBe("unchanged");
+      expect(diff.inputDiff.headcount!.direction).toBe("unchanged");
+      expect(diff.inputDiff.deadlineWeeks!.direction).toBe("unchanged");
+      expect(diff.inputDiff.scope!.direction).toBe("unchanged");
 
       // Output diff
       expect(diff.outputDiff.estimatedTimeWeeks.direction).toBe("unchanged");
@@ -146,7 +146,7 @@ describe("Phase 4 — Diff Engine", () => {
       expect(diff.outputDiff.riskBreakdown.scheduleRisk.direction).toBe("unchanged");
       expect(diff.outputDiff.riskBreakdown.budgetRisk.direction).toBe("unchanged");
       expect(diff.outputDiff.riskBreakdown.staffingRisk.direction).toBe("unchanged");
-      expect(diff.outputDiff.feasible.changed).toBe(false);
+      expect(diff.outputDiff.feasible!.changed).toBe(false);
 
       // Monte Carlo diff
       expect(diff.monteCarloDiff).not.toBeNull();
@@ -170,10 +170,10 @@ describe("Phase 4 — Diff Engine", () => {
 
       const diff = diffScenarios(scenarioA, scenarioB);
 
-      expect(diff.inputDiff.headcount.direction).toBe("increased");
-      expect(diff.inputDiff.budget.direction).toBe("unchanged");
-      expect(diff.inputDiff.deadlineWeeks.direction).toBe("unchanged");
-      expect(diff.inputDiff.scope.direction).toBe("unchanged");
+      expect(diff.inputDiff.headcount!.direction).toBe("increased");
+      expect(diff.inputDiff.budget!.direction).toBe("unchanged");
+      expect(diff.inputDiff.deadlineWeeks!.direction).toBe("unchanged");
+      expect(diff.inputDiff.scope!.direction).toBe("unchanged");
 
       expect(diff.attribution).toHaveLength(1);
       const attr = diff.attribution[0]!;
@@ -243,7 +243,7 @@ describe("Phase 4 — Diff Engine", () => {
 
       // No flip: true -> true
       const noFlip = diffScenarios(feasibleScenario, feasibleScenario);
-      expect(noFlip.outputDiff.feasible.changed).toBe(false);
+      expect(noFlip.outputDiff.feasible!.changed).toBe(false);
     });
 
     it("distribution resolution in diffScenarios: compares mixed distribution kinds via representative numbers", () => {
@@ -269,17 +269,17 @@ describe("Phase 4 — Diff Engine", () => {
 
       const diff = diffScenarios(scenarioA, scenarioB);
 
-      expect(diff.inputDiff.budget.delta).toBe(0);
-      expect(diff.inputDiff.budget.direction).toBe("unchanged");
+      expect(diff.inputDiff.budget!.delta).toBe(0);
+      expect(diff.inputDiff.budget!.direction).toBe("unchanged");
 
-      expect(diff.inputDiff.headcount.delta).toBe(0);
-      expect(diff.inputDiff.headcount.direction).toBe("unchanged");
+      expect(diff.inputDiff.headcount!.delta).toBe(0);
+      expect(diff.inputDiff.headcount!.direction).toBe("unchanged");
 
-      expect(diff.inputDiff.deadlineWeeks.delta).toBe(0);
-      expect(diff.inputDiff.deadlineWeeks.direction).toBe("unchanged");
+      expect(diff.inputDiff.deadlineWeeks!.delta).toBe(0);
+      expect(diff.inputDiff.deadlineWeeks!.direction).toBe("unchanged");
 
-      expect(diff.inputDiff.scope.delta).toBe(0);
-      expect(diff.inputDiff.scope.direction).toBe("unchanged");
+      expect(diff.inputDiff.scope!.delta).toBe(0);
+      expect(diff.inputDiff.scope!.direction).toBe("unchanged");
 
       expect(diff.attribution).toEqual([]);
     });
@@ -406,10 +406,10 @@ describe("Phase 4 — Diff Engine", () => {
       expect(diff.scenarioAId).toBe(scenarioA.id);
       expect(diff.scenarioBId).toBe(scenarioB.id);
 
-      expect(diff.inputDiff.budget.direction).toBe("increased");
-      expect(diff.inputDiff.headcount.direction).toBe("increased");
-      expect(diff.inputDiff.deadlineWeeks.direction).toBe("decreased");
-      expect(diff.inputDiff.scope.direction).toBe("unchanged");
+      expect(diff.inputDiff.budget!.direction).toBe("increased");
+      expect(diff.inputDiff.headcount!.direction).toBe("increased");
+      expect(diff.inputDiff.deadlineWeeks!.direction).toBe("decreased");
+      expect(diff.inputDiff.scope!.direction).toBe("unchanged");
 
       expect(diff.attribution.length).toBe(3);
       expect(diff.attribution.map((a) => a.field)).toEqual(

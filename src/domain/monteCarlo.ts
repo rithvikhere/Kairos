@@ -33,10 +33,16 @@ export interface UncertainConstraintSetting {
 }
 
 /**
- * Uncertain inputs for Monte Carlo simulations: uniform constraints where values can be Distributions.
+ * Uncertain inputs for Monte Carlo simulations: uniform constraints where values can be Distributions,
+ * with optional backwards-compatible flat levers.
  */
 export interface UncertainScenarioInputs {
-  constraints: Partial<Record<ConstraintKey, UncertainConstraintSetting>>;
+  constraints?: Partial<Record<ConstraintKey, UncertainConstraintSetting>>;
+  headcount?: number | Distribution;
+  budget?: number | Distribution;
+  deadlineWeeks?: number | Distribution;
+  scope?: number | Distribution;
+  [key: string]: any;
 }
 
 /**

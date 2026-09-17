@@ -1,13 +1,45 @@
 "use client";
 
-import React from "react";
+import React, { useRef } from "react";
 import Link from "next/link";
+import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion";
 import { ArrowUpRight, CheckCircle2 } from "lucide-react";
 
 export const FinalCtaSection: React.FC = () => {
+  const sectionRef = useRef<HTMLElement>(null);
+  const shouldReduceMotion = useReducedMotion();
+
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start end", "end start"],
+  });
+  const backgroundY = useTransform(
+    scrollYProgress,
+    [0, 1],
+    shouldReduceMotion ? ["0px", "0px"] : ["-30px", "30px"]
+  );
+
   return (
-    <section className="relative min-h-[85vh] flex flex-col justify-between px-6 sm:px-12 lg:px-20 py-16 bg-transparent text-[#d0fcf4]">
-      <div className="max-w-4xl mx-auto my-auto text-center space-y-8">
+    <section
+      ref={sectionRef}
+      className="relative min-h-[85vh] flex flex-col justify-between px-6 sm:px-12 lg:px-20 py-24 sm:py-28 lg:py-32 bg-transparent text-[#d0fcf4] overflow-hidden"
+    >
+      {/* Background layer with subtle parallax & ambient glow */}
+      <motion.div
+        style={{ y: backgroundY }}
+        className="absolute inset-0 pointer-events-none -z-10 bg-[#22272a]"
+        aria-hidden="true"
+      >
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(120,222,200,0.05),transparent_60%)]" />
+      </motion.div>
+
+      {/* Top gradient blend transition receiving FeatureShowcaseSection */}
+      <div
+        className="pointer-events-none absolute top-0 left-0 right-0 h-36 bg-gradient-to-b from-[#22272a] via-[#22272a]/80 to-transparent z-0"
+        aria-hidden="true"
+      />
+
+      <div className="relative z-10 max-w-4xl mx-auto my-auto text-center space-y-8">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-sans text-[#d0fcf4] bg-[#2c4356]/40 border border-[#2c4356]">
           <span className="w-1.5 h-1.5 rounded-full bg-[#d0fcf4]" />
           <span>Ready for production project modeling</span>

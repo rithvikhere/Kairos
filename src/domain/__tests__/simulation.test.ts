@@ -176,9 +176,9 @@ describe("simulate (integration)", () => {
 
   it("produces internally consistent utilization numbers", () => {
     const result = simulate(baseline);
-    expect(result.budgetUtilization).toBeCloseTo(result.actualCost / baseline.budget, 8);
+    expect(result.budgetUtilization).toBeCloseTo(result.actualCost! / baseline.budget, 8);
     expect(result.scheduleUtilization).toBeCloseTo(
-      result.estimatedTimeWeeks / baseline.deadlineWeeks,
+      result.estimatedTimeWeeks! / baseline.deadlineWeeks,
       8
     );
   });
@@ -219,7 +219,7 @@ describe("simulate (integration)", () => {
 
     expect(high.actualCost).toBe(low.actualCost);
     expect(high.estimatedTimeWeeks).toBe(low.estimatedTimeWeeks);
-    expect(high.riskBreakdown.budgetRisk).toBeLessThan(low.riskBreakdown.budgetRisk);
+    expect(high.riskBreakdown!.budgetRisk!).toBeLessThan(low.riskBreakdown!.budgetRisk!);
     expect(high.riskScore).toBeLessThan(low.riskScore);
   });
 
@@ -229,7 +229,7 @@ describe("simulate (integration)", () => {
 
     expect(relaxed.actualCost).toBe(tight.actualCost);
     expect(relaxed.estimatedTimeWeeks).toBe(tight.estimatedTimeWeeks);
-    expect(relaxed.riskBreakdown.scheduleRisk).toBeLessThan(tight.riskBreakdown.scheduleRisk);
+    expect(relaxed.riskBreakdown!.scheduleRisk!).toBeLessThan(tight.riskBreakdown!.scheduleRisk!);
   });
 
   it("throws InvalidScenarioError instead of returning garbage for bad inputs", () => {

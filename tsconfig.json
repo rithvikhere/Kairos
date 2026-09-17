@@ -27,6 +27,10 @@
     "incremental": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
+    "types": [
+      "@testing-library/jest-dom/vitest",
+      "node"
+    ],
     "plugins": [
       {
         "name": "next"
@@ -35,12 +39,13 @@
   },
   "include": [
     "src",
+    "next-env.d.ts",
+    "tailwind.config.ts",
+    "vitest.config.ts",
+    "playwright.config.ts",
     ".next/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules",
-    "src/**/__tests__/**",
-    "**/*.test.ts",
-    "**/*.test.tsx"
+    "node_modules"
   ]
 }

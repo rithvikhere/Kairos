@@ -118,15 +118,60 @@ describe("Landing Page Components", () => {
     expect(screen.getByText("Monte Carlo Spread")).toBeInTheDocument();
     expect(screen.getByText("Delivery Trade-off Frontier")).toBeInTheDocument();
     expect(screen.getByText("Structure and color that")).toBeInTheDocument();
+
+    // Card 1: Horizontal risk bars
+    expect(screen.getByText("Staffing Risk")).toBeInTheDocument();
+    expect(screen.getByText("Schedule Risk")).toBeInTheDocument();
+    expect(screen.getByText("Budget Risk")).toBeInTheDocument();
+    expect(screen.getByText("76%")).toBeInTheDocument();
+    expect(screen.getByText("38%")).toBeInTheDocument();
+    expect(screen.getByText("22%")).toBeInTheDocument();
+
+    // Card 2: Donut chart & legend
+    expect(screen.getByLabelText("Scenario portfolio mix donut chart")).toBeInTheDocument();
+    expect(screen.getByText("60%")).toBeInTheDocument();
+    expect(screen.getByText("Feasible Scenarios")).toBeInTheDocument();
+    expect(screen.getByText("High Risk Scenarios")).toBeInTheDocument();
+    expect(screen.getByText("Critical Scenarios")).toBeInTheDocument();
+
+    // Card 3: Monte Carlo spread curve & on-time probability badge
+    expect(screen.getByLabelText("Monte Carlo bell curve distribution")).toBeInTheDocument();
+    expect(screen.getByText("Probability On-Time")).toBeInTheDocument();
+    expect(screen.getByText("Target 17.5w")).toBeInTheDocument();
+
+    // Card 4: Trade-off frontier curve & optimum feasibility dot
+    expect(screen.getByLabelText("Simulation frontier curve diagram")).toBeInTheDocument();
+    expect(screen.getByText("Optimum Feasibility (78%)")).toBeInTheDocument();
   });
 
-  it("FinalCtaSection renders closing headline and Go to Kairos hard navigation button", () => {
-    render(<FinalCtaSection />);
+  it("FinalCtaSection renders closing headline and Go to Kairos hard navigation button without top border divider", () => {
+    const { container } = render(<FinalCtaSection />);
 
     expect(screen.getByText(/Start tracing your own/i)).toBeInTheDocument();
     expect(screen.getByText(/decisions\./i)).toBeInTheDocument();
 
     const finalBtn = screen.getByTestId("final-cta-btn");
     expect(finalBtn).toHaveAttribute("href", "/projects");
+
+    // Container should NOT have border-t cutting off the section
+    const section = container.querySelector("section");
+    expect(section).not.toBeNull();
+    expect(section?.className).not.toContain("border-t");
+    expect(section?.className).not.toContain("border-b");
+  });
+
+  it("Landing sections do not contain scroll-snap classes", () => {
+    const { container: heroContainer } = render(<HeroSection />);
+    const { container: dataContainer } = render(<DataVisualizationsSection />);
+    const { container: featureContainer } = render(<FeatureShowcaseSection />);
+    const { container: ctaContainer } = render(<FinalCtaSection />);
+
+    for (const c of [heroContainer, dataContainer, featureContainer, ctaContainer]) {
+      const el = c.querySelector("section");
+      expect(el?.className).not.toContain("snap-start");
+      expect(el?.className).not.toContain("snap-y");
+      expect(el?.className).not.toContain("snap-mandatory");
+      expect(el?.className).not.toContain("border-b");
+    }
   });
 });

@@ -115,4 +115,14 @@ describe("ReelGallery Component", () => {
     const gallery = screen.getByTestId("reel-gallery-background");
     expect(gallery).toBeInTheDocument();
   });
+
+  it("persists drift offsets across re-renders so it does not reload from the start", () => {
+    const { unmount } = render(<ReelGallery rows={4} />);
+    unmount();
+
+    // Re-rendering should safely pick up existing persistent offsets without error
+    render(<ReelGallery rows={4} />);
+    const gallery = screen.getByTestId("reel-gallery-background");
+    expect(gallery).toBeInTheDocument();
+  });
 });

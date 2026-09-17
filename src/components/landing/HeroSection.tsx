@@ -1,37 +1,65 @@
 "use client";
 
-import React from "react";
+import React, { useRef } from "react";
 import Link from "next/link";
 import { ArrowDown, ArrowUpRight } from "lucide-react";
+import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion";
 import { ReelGallery } from "../ui/ReelGallery.js";
 
 export const HeroSection: React.FC = () => {
+  const sectionRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start start", "end start"],
+  });
+  const shouldReduceMotion = useReducedMotion();
+  const backgroundY = useTransform(
+    scrollYProgress,
+    [0, 1],
+    shouldReduceMotion ? ["0px", "0px"] : ["0px", "50px"]
+  );
+
   const scrollToFeatures = () => {
-    const el = document.getElementById("feature-showcase");
+    const el = document.getElementById("analytics") || document.getElementById("feature-showcase");
     if (el) {
       el.scrollIntoView({ behavior: "smooth" });
     }
   };
 
   return (
-    <section className="relative min-h-screen flex flex-col justify-between items-center text-center px-6 sm:px-12 lg:px-20 py-10 bg-transparent text-[#d0fcf4] overflow-hidden border-b border-[#d0fcf4]/15">
-      {/* Subdued Non-Interactive Reel Gallery Ambient Background Layer */}
-      <ReelGallery
-        rows={6}
-        rowHeight={96}
-        rowGap={18}
-        itemGap={16}
-        autoScroll={14}
-        speed={1}
-        speedVariance={0.3}
-        tilt={-5}
-        alternate={true}
-        opacity={0.52}
-        brightness={1.0}
-        grayscale={0.2}
-        blurAmount="1px"
-        overlayColor="#f6f4ef"
-        overlayOpacity={0.42}
+    <section
+      ref={sectionRef}
+      className="relative min-h-screen flex flex-col justify-between items-center text-center px-6 sm:px-12 lg:px-20 py-16 md:py-20 bg-transparent text-[#d0fcf4] overflow-hidden"
+    >
+      {/* Subdued Non-Interactive Reel Gallery Ambient Background Layer with subtle parallax */}
+      <motion.div
+        style={{ y: backgroundY }}
+        className="absolute inset-0 pointer-events-none -z-10"
+        aria-hidden="true"
+      >
+        <ReelGallery
+          rows={6}
+          rowHeight={96}
+          rowGap={18}
+          itemGap={16}
+          autoScroll={14}
+          speed={1}
+          speedVariance={0.3}
+          tilt={-5}
+          alternate={true}
+          opacity={0.52}
+          brightness={1.0}
+          grayscale={0.2}
+          blurAmount="1px"
+          overlayColor="#f6f4ef"
+          overlayOpacity={0.42}
+        />
+      </motion.div>
+
+      {/* Bottom gradient blend transition into Section 2 */}
+      <div
+        className="pointer-events-none absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-b from-transparent via-[#343839]/60 to-[#303537] z-0"
+        aria-hidden="true"
       />
 
       {/* Centered Main Hero Block */}

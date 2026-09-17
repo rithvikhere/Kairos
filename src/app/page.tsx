@@ -16,14 +16,14 @@ export default function LandingPage() {
   return (
     <div className="relative w-full bg-[#343839] text-[#d0fcf4] overflow-x-hidden selection:bg-[#2c4356] selection:text-[#d0fcf4]">
       <div className="relative z-10">
-        {/* 1. Hero Section: Editorial typography + Orchestrated curve draw-in */}
+        {/* 1. Hero Section: Editorial typography + Reel Gallery */}
         <HeroSection />
 
-        {/* 2. Interactive Feature Showcase: Background mock + 5 pulsing hotspots */}
-        <FeatureShowcaseSection />
-
-        {/* 3. Data Visualizations Section: Meaning-driven risk charts */}
+        {/* 2. Data Visualizations Section: Meaning-driven analytical risk charts */}
         <DataVisualizationsSection />
+
+        {/* 3. Interactive Feature Showcase: Subsystem inspector + Dashboard mock */}
+        <FeatureShowcaseSection />
 
         {/* 4. Final CTA Section: Transition into the Kairos workspace */}
         <FinalCtaSection />

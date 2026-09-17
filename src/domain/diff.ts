@@ -72,9 +72,9 @@ export interface ScenarioDiff {
    */
   attribution: InputAttribution[];
   /** Constraints or outputs evaluated only in scenario A. */
-  onlyInA: string[];
+  onlyInA?: string[];
   /** Constraints or outputs evaluated only in scenario B. */
-  onlyInB: string[];
+  onlyInB?: string[];
 }
 
 /**
