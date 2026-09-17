@@ -15,7 +15,7 @@ interface TrialScatterPlotProps {
 export function TrialScatterPlot({ trialSample }: TrialScatterPlotProps) {
   if (!trialSample || trialSample.length === 0) {
     return (
-      <div className="p-6 rounded-2xl bg-white border border-neutral text-center text-ink/50 text-xs">
+      <div className="p-6 rounded-2xl bg-[#282c2d] border border-neutral text-center text-white/50 text-xs">
         Trial outcome sampling not available for this run.
       </div>
     );
@@ -56,20 +56,20 @@ export function TrialScatterPlot({ trialSample }: TrialScatterPlotProps) {
   const infeasibleCount = trialSample.length - feasibleCount;
 
   return (
-    <div className="p-5 bg-white border border-neutral rounded-2xl shadow-xs space-y-3 text-ink">
+    <div className="p-5 bg-[#282c2d] border border-neutral rounded-2xl shadow-xs space-y-3 text-white">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-serif text-base font-bold text-[#0f172a]">Trial Scatter Distribution</h3>
-          <p className="text-xs text-ink/60">
+          <h3 className="font-serif text-base font-bold text-white">Trial Scatter Distribution</h3>
+          <p className="text-xs text-white/60">
             Actual Cost vs. Estimated Time across representative trials ({trialSample.length} samples)
           </p>
         </div>
         <div className="flex items-center gap-3 text-xs font-mono">
-          <span className="flex items-center gap-1.5 text-xs text-[#2b5336]">
+          <span className="flex items-center gap-1.5 text-xs text-[#8ba888]">
             <span className="w-2.5 h-2.5 rounded-full bg-[#8ba888]" />
             Feasible ({feasibleCount})
           </span>
-          <span className="flex items-center gap-1.5 text-xs text-[#8c331a]">
+          <span className="flex items-center gap-1.5 text-xs text-[#e07a5f]">
             <span className="w-2.5 h-2.5 rounded-full bg-[#b5502f]" />
             Infeasible ({infeasibleCount})
           </span>
@@ -92,7 +92,8 @@ export function TrialScatterPlot({ trialSample }: TrialScatterPlotProps) {
                   y1={yPos}
                   x2={width - padRight}
                   y2={yPos}
-                  stroke="#e8e3d8"
+                  stroke="#ffffff"
+                  strokeOpacity={0.15}
                   strokeDasharray="3 3"
                   strokeWidth="1"
                 />
@@ -100,7 +101,8 @@ export function TrialScatterPlot({ trialSample }: TrialScatterPlotProps) {
                   x={padLeft - 8}
                   y={yPos + 4}
                   textAnchor="end"
-                  fill="#717a74"
+                  fill="#ffffff"
+                  fillOpacity={0.6}
                   fontSize="10"
                 >
                   ${Math.round(costVal / 1000)}k
@@ -117,8 +119,8 @@ export function TrialScatterPlot({ trialSample }: TrialScatterPlotProps) {
               cy={getY(t.actualCost)}
               r="3.5"
               fill={t.feasible ? "#8ba888" : "#b5502f"}
-              fillOpacity={0.65}
-              stroke={t.feasible ? "#577a54" : "#8a2f16"}
+              fillOpacity={0.75}
+              stroke={t.feasible ? "#a8cca5" : "#e07a5f"}
               strokeWidth="0.8"
             />
           ))}
@@ -128,7 +130,8 @@ export function TrialScatterPlot({ trialSample }: TrialScatterPlotProps) {
             x={padLeft}
             y={height - 12}
             textAnchor="start"
-            fill="#717a74"
+            fill="#ffffff"
+            fillOpacity={0.6}
             fontSize="10"
           >
             {xMin.toFixed(1)} wks
@@ -137,7 +140,8 @@ export function TrialScatterPlot({ trialSample }: TrialScatterPlotProps) {
             x={width / 2}
             y={height - 12}
             textAnchor="middle"
-            fill="#717a74"
+            fill="#ffffff"
+            fillOpacity={0.6}
             fontSize="10"
           >
             Estimated Schedule (Weeks) →
@@ -146,7 +150,8 @@ export function TrialScatterPlot({ trialSample }: TrialScatterPlotProps) {
             x={width - padRight}
             y={height - 12}
             textAnchor="end"
-            fill="#717a74"
+            fill="#ffffff"
+            fillOpacity={0.6}
             fontSize="10"
           >
             {xMax.toFixed(1)} wks
@@ -154,10 +159,12 @@ export function TrialScatterPlot({ trialSample }: TrialScatterPlotProps) {
         </svg>
       </div>
 
-      <div className="flex items-center justify-between text-[11px] text-ink/50 pt-1 border-t border-neutral/60">
+      <div className="flex items-center justify-between text-[11px] text-white/50 pt-1 border-t border-white/10">
         <span>Y-axis: Actual Cost ($) | X-axis: Delivery Duration (Weeks)</span>
         <span>Colored by feasibility threshold (riskScore &lt; 50)</span>
       </div>
     </div>
   );
 }
+
+export default TrialScatterPlot;

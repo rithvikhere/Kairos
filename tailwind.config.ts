@@ -8,7 +8,7 @@ const config: Config = {
     extend: {
       colors: {
         base: "#343839",       // dark charcoal-slate background
-        ink: "#d0fcf4",        // luminous mint text
+        ink: "#ffffff",        // white text
         accent: "#3a5a6b",     // deep petrol/slate-teal — one solid color, no gradient
         neutral: "#454d4b",    // dark border and card neutral
         "risk-low": "#e6ede3", // sage
@@ -18,7 +18,7 @@ const config: Config = {
 
         // Landing Identity Palette
         "landing-base": "#343839",         // dark background
-        "landing-ink": "#d0fcf4",          // luminous mint text
+        "landing-ink": "#ffffff",          // white text
         "landing-accent": "#2c4356",       // deep slate-navy
         "landing-accent-hover": "#1d2e3b", // deep state hover
         "signal-sage": "#8ba888",          // low risk / feasible signal

@@ -53,11 +53,11 @@ export const AttributionBarChart: React.FC<AttributionBarChartProps> = ({
             layout="vertical"
             margin={{ top: 10, right: 30, left: 40, bottom: 10 }}
           >
-            <XAxis type="number" tick={{ fill: "#d0fcf4", fontSize: 11 }} />
+            <XAxis type="number" tick={{ fill: "#ffffff", fontSize: 11 }} />
             <YAxis
               type="category"
               dataKey="field"
-              tick={{ fill: "#d0fcf4", fontSize: 11, fontWeight: "bold" }}
+              tick={{ fill: "#ffffff", fontSize: 11, fontWeight: "bold" }}
             />
             <Tooltip
               contentStyle={{
@@ -65,7 +65,7 @@ export const AttributionBarChart: React.FC<AttributionBarChartProps> = ({
                 borderColor: "#454d4b",
                 borderRadius: "8px",
                 fontSize: "12px",
-                color: "#d0fcf4",
+                color: "#ffffff",
               }}
               formatter={(value: any) => [
                 `${value > 0 ? "+" : ""}${value} risk points`,

@@ -11,7 +11,7 @@ interface SensitivityTornadoChartProps {
 export function SensitivityTornadoChart({ attribution }: SensitivityTornadoChartProps) {
   if (!attribution || attribution.length === 0) {
     return (
-      <div className="p-6 rounded-2xl bg-white border border-neutral text-center text-ink/50 text-xs">
+      <div className="p-6 rounded-2xl bg-[#282c2d] border border-neutral text-center text-white/50 text-xs">
         No active input levers changed between scenarios.
       </div>
     );
@@ -29,15 +29,15 @@ export function SensitivityTornadoChart({ attribution }: SensitivityTornadoChart
   };
 
   return (
-    <div className="p-5 bg-white border border-neutral rounded-2xl shadow-xs space-y-4 text-ink">
+    <div className="p-5 bg-[#282c2d] border border-neutral rounded-2xl shadow-xs space-y-4 text-white">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-serif text-base font-bold text-[#0f172a]">Sensitivity Tornado Chart</h3>
-          <p className="text-xs text-ink/60">
+          <h3 className="font-serif text-base font-bold text-white">Sensitivity Tornado Chart</h3>
+          <p className="text-xs text-white/60">
             Isolated risk delta per active changed lever (largest absolute impact first)
           </p>
         </div>
-        <div className="flex items-center gap-3 text-[11px] font-medium text-ink/60 font-mono">
+        <div className="flex items-center gap-3 text-[11px] font-medium text-white/60 font-mono">
           <span className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-xs bg-[#8ba888]" />
             Risk Decreasing (-pts)
@@ -58,16 +58,16 @@ export function SensitivityTornadoChart({ attribution }: SensitivityTornadoChart
           return (
             <div key={row.field} className="space-y-1">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-ink">{getLabel(row.field)}</span>
-                <span className="font-mono text-[11px] font-bold">
+                <span className="font-semibold text-white">{getLabel(row.field)}</span>
+                <span className="font-mono text-[11px] font-bold text-white">
                   {impact > 0 ? `+${impact.toFixed(1)}` : impact.toFixed(1)} pts
                 </span>
               </div>
 
               {/* Centered zero-axis tornado bar */}
-              <div className="h-6 w-full bg-[#f5f2ec] rounded-lg relative flex items-center overflow-hidden border border-neutral/60">
+              <div className="h-6 w-full bg-[#222526] rounded-lg relative flex items-center overflow-hidden border border-neutral/60">
                 {/* Center line (0 impact) */}
-                <div className="absolute left-1/2 top-0 bottom-0 w-px bg-ink/20 z-10" />
+                <div className="absolute left-1/2 top-0 bottom-0 w-px bg-white/20 z-10" />
 
                 {isIncrease ? (
                   // Positive impact: bar extends right from center
@@ -96,10 +96,12 @@ export function SensitivityTornadoChart({ attribution }: SensitivityTornadoChart
         })}
       </div>
 
-      <div className="pt-2 text-[11px] text-ink/50 italic border-t border-neutral/60 leading-relaxed">
+      <div className="pt-2 text-[11px] text-white/50 italic border-t border-neutral/60 leading-relaxed">
         * Single-variable probe: isolated risk score if only this lever were modified from baseline.
         Non-linear interaction effects mean these deltas do not sum directly to total risk change.
       </div>
     </div>
   );
 }
+
+export default SensitivityTornadoChart;

@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Sliders, ShieldAlert, GitCompare, Activity, Sparkles, CheckCircle2, ArrowRight } from "lucide-react";
+import { X, CheckCircle2 } from "lucide-react";
 
 export type FeatureHotspotType =
   | "slider"
@@ -23,12 +23,21 @@ interface FeatureContent {
   visual: React.ReactNode;
 }
 
+/**
+ * FeaturePopupModal:
+ * Displays an accessible, detailed modal with explanatory architectural context,
+ * mathematical grounding, and interactive miniature preview for each hotspot.
+ */
 export const FeaturePopupModal: React.FC<FeaturePopupModalProps> = ({
   activeHotspot,
   onClose,
 }) => {
-  // Dismiss on Escape key
-  useEffect(() => {
+  // Interactive mini state for the slider hotspot inside modal
+  const [miniHeadcount, setMiniHeadcount] = useState(10);
+
+  // Close on Escape key press
+  React.useEffect(() => {
+    if (!activeHotspot) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         onClose();
@@ -36,17 +45,14 @@ export const FeaturePopupModal: React.FC<FeaturePopupModalProps> = ({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+  }, [activeHotspot, onClose]);
 
-  // Interactive state for mini slider in slider popup
-  const [miniHeadcount, setMiniHeadcount] = useState(8);
-
-  // Compute live mini risk for interactive demonstration
+  // Quick Brooks's Law approximation for the interactive mini-slider:
+  // Base drag penalty = 0.5 * (N*(N-1) / 100)
   const computeMiniRisk = (hc: number) => {
-    // Brooks's law penalty demonstration: communication overhead starts rising sharply above 8
-    const base = 25;
-    const penalty = hc > 8 ? (hc - 8) * 7.5 : (8 - hc) * 2;
-    return Math.min(Math.round(base + penalty), 100);
+    const rawOverhead = (hc * (hc - 1)) / 100;
+    const baseRisk = 30;
+    return Math.min(100, Math.round(baseRisk + rawOverhead * 28));
   };
   const liveMiniRisk = computeMiniRisk(miniHeadcount);
   const liveRiskColor =
@@ -65,8 +71,8 @@ export const FeaturePopupModal: React.FC<FeaturePopupModalProps> = ({
       visual: (
         <div className="p-4 rounded-xl border border-neutral bg-[#282c2d] space-y-3 font-sans">
           <div className="flex items-center justify-between text-xs">
-            <span className="font-medium text-[#d0fcf4]">Test Team Size:</span>
-            <span className="font-mono font-bold text-[#78dec8] bg-neutral/50 px-2 py-0.5 rounded">
+            <span className="font-medium text-white">Test Team Size:</span>
+            <span className="font-mono font-bold text-white bg-neutral/50 px-2 py-0.5 rounded">
               {miniHeadcount} engineers
             </span>
           </div>
@@ -80,7 +86,7 @@ export const FeaturePopupModal: React.FC<FeaturePopupModalProps> = ({
             className="w-full accent-[#2c4356] cursor-pointer"
           />
           <div className="flex items-center justify-between pt-2 border-t border-neutral/60 text-xs">
-            <span className="text-[#d0fcf4]/60">Computed Risk Score:</span>
+            <span className="text-white/60">Computed Risk Score:</span>
             <div className="flex items-center gap-2">
               <span
                 className="w-2.5 h-2.5 rounded-full"
@@ -89,7 +95,7 @@ export const FeaturePopupModal: React.FC<FeaturePopupModalProps> = ({
               <span className="font-serif font-bold text-base" style={{ color: liveRiskColor }}>
                 {liveMiniRisk} / 100
               </span>
-              <span className="text-[10px] text-[#d0fcf4]/50">
+              <span className="text-[10px] text-white/50">
                 ({liveMiniRisk < 50 ? "Feasible" : "Infeasible"})
               </span>
             </div>
@@ -106,7 +112,7 @@ export const FeaturePopupModal: React.FC<FeaturePopupModalProps> = ({
         <div className="p-4 rounded-xl border border-neutral bg-[#282c2d] space-y-2.5 font-sans text-xs">
           <div>
             <div className="flex justify-between text-[11px] mb-1">
-              <span className="text-[#d0fcf4]/70">Schedule Risk</span>
+              <span className="text-white/70">Schedule Risk</span>
               <span className="font-mono font-semibold text-[#8ba888]">24% (Low)</span>
             </div>
             <div className="h-2 w-full bg-neutral/60 rounded-full overflow-hidden">
@@ -115,7 +121,7 @@ export const FeaturePopupModal: React.FC<FeaturePopupModalProps> = ({
           </div>
           <div>
             <div className="flex justify-between text-[11px] mb-1">
-              <span className="text-[#d0fcf4]/70">Budget Utilization</span>
+              <span className="text-white/70">Budget Utilization</span>
               <span className="font-mono font-semibold text-[#c98a3e]">48% (Moderate)</span>
             </div>
             <div className="h-2 w-full bg-neutral/60 rounded-full overflow-hidden">
@@ -124,7 +130,7 @@ export const FeaturePopupModal: React.FC<FeaturePopupModalProps> = ({
           </div>
           <div>
             <div className="flex justify-between text-[11px] mb-1">
-              <span className="text-[#d0fcf4]/70">Staffing Communication Drag</span>
+              <span className="text-white/70">Staffing Communication Drag</span>
               <span className="font-mono font-semibold text-[#b5502f]">78% (Critical)</span>
             </div>
             <div className="h-2 w-full bg-neutral/60 rounded-full overflow-hidden">
@@ -142,14 +148,14 @@ export const FeaturePopupModal: React.FC<FeaturePopupModalProps> = ({
       visual: (
         <div className="p-4 rounded-xl border border-neutral bg-[#282c2d] space-y-2 font-sans text-xs">
           <div className="flex items-center justify-between py-1.5 border-b border-neutral/60">
-            <span className="text-[#d0fcf4]/60">Budget Shift</span>
-            <span className="font-mono font-semibold text-[#78dec8]">+$100,000 (+20%)</span>
+            <span className="text-white/60">Budget Shift</span>
+            <span className="font-mono font-semibold text-white">+$100,000 (+20%)</span>
           </div>
           <div className="flex items-center justify-between py-1.5 border-b border-neutral/60">
-            <span className="text-[#d0fcf4]/60">Deadline Shift</span>
+            <span className="text-white/60">Deadline Shift</span>
             <span className="font-mono font-semibold text-[#8ba888]">+4 weeks (+20%)</span>
           </div>
-          <div className="flex items-center justify-between py-1.5 bg-[#8ba888]/20 px-2 rounded-lg text-[#d0fcf4]">
+          <div className="flex items-center justify-between py-1.5 bg-[#8ba888]/20 px-2 rounded-lg text-white">
             <span className="font-medium">Primary Isolated Driver:</span>
             <span className="font-mono font-bold text-[#8ba888]">-16 risk points</span>
           </div>
@@ -164,8 +170,8 @@ export const FeaturePopupModal: React.FC<FeaturePopupModalProps> = ({
       visual: (
         <div className="p-4 rounded-xl border border-neutral bg-[#282c2d] space-y-2.5 font-sans">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-[#d0fcf4]/70">Confidence Interval (P10–P90):</span>
-            <span className="text-xs font-mono font-bold text-[#78dec8]">16.4 – 23.8 wks</span>
+            <span className="text-xs text-white/70">Confidence Interval (P10–P90):</span>
+            <span className="text-xs font-mono font-bold text-white">16.4 – 23.8 wks</span>
           </div>
           <div className="relative h-12 w-full flex items-end gap-1 px-1">
             {[15, 28, 45, 70, 92, 100, 88, 65, 40, 22, 12].map((height, i) => (
@@ -181,7 +187,7 @@ export const FeaturePopupModal: React.FC<FeaturePopupModalProps> = ({
             ))}
           </div>
           <div className="flex items-center justify-between bg-[#8ba888]/20 px-2.5 py-1.5 rounded-lg text-xs">
-            <span className="font-medium text-[#d0fcf4]">On-Time Probability:</span>
+            <span className="font-medium text-white">On-Time Probability:</span>
             <span className="font-mono font-bold text-[#8ba888]">78.4% Confidence</span>
           </div>
         </div>
@@ -198,7 +204,7 @@ export const FeaturePopupModal: React.FC<FeaturePopupModalProps> = ({
             <CheckCircle2 className="w-3 h-3" />
             <span>Grounded in computed diff · 0 invented figures</span>
           </div>
-          <p className="text-[#d0fcf4]/80 italic leading-relaxed bg-[#222526] p-2.5 rounded-lg border border-neutral/60">
+          <p className="text-white/80 italic leading-relaxed bg-[#222526] p-2.5 rounded-lg border border-neutral/60">
             &ldquo;Extending the timeline from 20 to 24 weeks reduces schedule pressure by 18 points, fully neutralizing the communication drag from adding two engineers.&rdquo;
           </p>
         </div>
@@ -233,17 +239,17 @@ export const FeaturePopupModal: React.FC<FeaturePopupModalProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 16 }}
             transition={{ duration: 0.25, ease: "easeOut" }}
-            className="relative w-full max-w-md bg-[#343839] rounded-2xl border border-neutral shadow-2xl p-6 z-10 space-y-4"
+            className="relative w-full max-w-md bg-[#282c2d] rounded-2xl border border-neutral shadow-2xl p-6 z-10 space-y-4"
           >
             {/* Header */}
             <div className="flex items-start justify-between gap-3">
               <div>
-                <span className="text-[10px] uppercase font-bold tracking-wider text-[#78dec8]">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-[#8ba888]">
                   {current.tag}
                 </span>
                 <h3
                   id="feature-modal-title"
-                  className="font-serif text-xl font-bold text-[#d0fcf4] mt-0.5"
+                  className="font-serif text-xl font-bold text-white mt-0.5"
                 >
                   {current.title}
                 </h3>
@@ -253,14 +259,14 @@ export const FeaturePopupModal: React.FC<FeaturePopupModalProps> = ({
                 type="button"
                 onClick={onClose}
                 aria-label="Close modal"
-                className="p-1.5 rounded-lg text-[#d0fcf4]/50 hover:text-[#d0fcf4] hover:bg-neutral/60 transition-colors focus:outline-none focus:ring-2 focus:ring-[#2c4356]"
+                className="p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-neutral/60 transition-colors focus:outline-none focus:ring-2 focus:ring-[#2c4356]"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Feature Description */}
-            <p className="text-xs text-[#d0fcf4]/80 leading-relaxed font-sans">
+            <p className="text-xs text-white/80 leading-relaxed font-sans">
               {current.description}
             </p>
 
@@ -272,7 +278,7 @@ export const FeaturePopupModal: React.FC<FeaturePopupModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-3.5 py-1.5 rounded-lg bg-[#2c4356] hover:bg-[#1d2e3b] text-[#d0fcf4] text-xs font-semibold shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[#2c4356]"
+                className="px-3.5 py-1.5 rounded-lg bg-[#2c4356] hover:bg-[#1d2e3b] text-white text-xs font-semibold shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[#2c4356]"
               >
                 Got it
               </button>

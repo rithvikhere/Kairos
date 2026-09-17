@@ -33,43 +33,32 @@ export const FeatureShowcaseSection: React.FC = () => {
     <section
       id="feature-showcase"
       ref={sectionRef}
-      className="relative py-28 sm:py-32 px-6 sm:px-12 lg:px-20 bg-transparent text-[#d0fcf4] overflow-hidden"
+      className="relative py-28 sm:py-32 px-6 sm:px-12 lg:px-20 bg-transparent text-white overflow-hidden"
     >
       {/* Background layer with subtle parallax & ambient glow */}
       <motion.div
         style={{ y: backgroundY }}
-        className="absolute inset-0 pointer-events-none -z-10 bg-[#282e31]"
+        className="absolute inset-0 pointer-events-none -z-10 bg-transparent"
         aria-hidden="true"
       >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_35%,rgba(58,90,107,0.12),transparent_55%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_75%,rgba(120,222,200,0.05),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_75%,rgba(255,255,255,0.04),transparent_50%)]" />
       </motion.div>
 
-      {/* Top gradient blend transition receiving DataVisualizationsSection */}
-      <div
-        className="pointer-events-none absolute top-0 left-0 right-0 h-36 bg-gradient-to-b from-[#282e31] via-[#282e31]/80 to-transparent z-0"
-        aria-hidden="true"
-      />
-
-      {/* Bottom gradient blend transition into FinalCtaSection */}
-      <div
-        className="pointer-events-none absolute bottom-0 left-0 right-0 h-36 bg-gradient-to-b from-transparent via-[#252b2e]/80 to-[#22272a] z-0"
-        aria-hidden="true"
-      />
       <div className="max-w-7xl mx-auto space-y-12">
         {/* Editorial Section Header */}
         <div className="max-w-3xl space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-sans text-[#d0fcf4] bg-[#2c4356]/40 border border-[#2c4356]">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#d0fcf4]" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-sans text-white bg-[#2c4356]/40 border border-[#2c4356]">
+            <span className="w-1.5 h-1.5 rounded-full bg-white" />
             <span>Interactive Product Architecture</span>
           </div>
 
-          <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-[#d0fcf4] leading-[1.15]">
+          <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-white leading-[1.15]">
             An instrument built for <br />
-            <span className="italic font-serif text-[#78dec8]">trade-off physics.</span>
+            <span className="italic font-serif text-white/90 underline decoration-white/30 underline-offset-8">trade-off physics.</span>
           </h2>
 
-          <p className="text-base sm:text-lg text-[#d0fcf4]/80 font-sans font-normal leading-relaxed">
+          <p className="text-base sm:text-lg text-white/80 font-sans font-normal leading-relaxed">
             Every lever alters team communication overhead, timeline slippage, and budget
             consumption. Click any pulsating marker on the live workspace preview to inspect the
             mathematical mechanisms behind each subsystem.
@@ -77,7 +66,7 @@ export const FeatureShowcaseSection: React.FC = () => {
 
           {/* Quick Subsystem Nav Buttons for Accessibility and Touch screens */}
           <div className="flex flex-wrap items-center gap-2 pt-2">
-            <span className="text-xs font-sans text-[#d0fcf4]/60 mr-1">Inspect subsystem:</span>
+            <span className="text-xs font-sans text-white/60 mr-1">Inspect subsystem:</span>
             {quickNav.map((item) => {
               const Icon = item.icon;
               return (
@@ -85,7 +74,7 @@ export const FeatureShowcaseSection: React.FC = () => {
                   key={item.id}
                   type="button"
                   onClick={() => setActiveHotspot(item.id)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#3a4041] hover:bg-[#2c4356] hover:text-[#d0fcf4] text-[#d0fcf4] border border-[#d0fcf4]/15 text-xs font-sans font-medium transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2c4356]"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#282c2d] hover:bg-[#3a4041] hover:text-white text-white/90 border border-white/10 text-xs font-sans font-medium transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2c4356]"
                 >
                   <Icon className="w-3.5 h-3.5 opacity-80" />
                   <span>{item.label}</span>

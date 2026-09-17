@@ -14,9 +14,9 @@ import { FinalCtaSection } from "../components/landing/FinalCtaSection.js";
  */
 export default function LandingPage() {
   return (
-    <div className="relative w-full bg-[#343839] text-[#d0fcf4] overflow-x-hidden selection:bg-[#2c4356] selection:text-[#d0fcf4]">
+    <div className="relative w-full bg-transparent text-white overflow-x-hidden selection:bg-[#2c4356] selection:text-white">
       <div className="relative z-10">
-        {/* 1. Hero Section: Editorial typography + Reel Gallery */}
+        {/* 1. Hero Section */}
         <HeroSection />
 
         {/* 2. Data Visualizations Section: Meaning-driven analytical risk charts */}

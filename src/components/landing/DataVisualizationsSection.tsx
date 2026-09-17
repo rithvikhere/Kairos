@@ -170,44 +170,32 @@ export const DataVisualizationsSection: React.FC = () => {
     <section
       id="analytics"
       ref={sectionRef}
-      className="relative py-28 sm:py-32 px-6 sm:px-12 lg:px-20 bg-transparent text-[#d0fcf4] overflow-hidden"
+      className="relative py-28 sm:py-32 px-6 sm:px-12 lg:px-20 bg-transparent text-white overflow-hidden"
     >
       {/* Background layer with subtle parallax & ambient glow */}
       <motion.div
         style={{ y: backgroundY }}
-        className="absolute inset-0 pointer-events-none -z-10 bg-[#303537]"
+        className="absolute inset-0 pointer-events-none -z-10 bg-transparent"
         aria-hidden="true"
       >
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_25%,rgba(120,222,200,0.06),transparent_55%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_80%,rgba(58,90,107,0.12),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_25%,rgba(255,255,255,0.04),transparent_55%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_80%,rgba(58,90,107,0.15),transparent_50%)]" />
       </motion.div>
-
-      {/* Top gradient blend transition receiving Hero */}
-      <div
-        className="pointer-events-none absolute top-0 left-0 right-0 h-36 bg-gradient-to-b from-[#303537] via-[#303537]/80 to-transparent z-0"
-        aria-hidden="true"
-      />
-
-      {/* Bottom gradient blend transition into FeatureShowcase */}
-      <div
-        className="pointer-events-none absolute bottom-0 left-0 right-0 h-36 bg-gradient-to-b from-transparent via-[#2b3134]/80 to-[#282e31] z-0"
-        aria-hidden="true"
-      />
 
       <div className="relative z-10 max-w-7xl mx-auto space-y-16">
         {/* Section Title */}
         <div className="max-w-3xl space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-sans text-[#d0fcf4] bg-[#2c4356]/40 border border-[#2c4356]">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#d0fcf4]" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-sans text-white bg-[#2c4356]/40 border border-[#2c4356]">
+            <span className="w-1.5 h-1.5 rounded-full bg-white" />
             <span>Analytical Rigor</span>
           </div>
 
-          <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-[#d0fcf4] leading-[1.15]">
+          <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-white leading-[1.15]">
             Structure and color that <br />
-            <span className="italic font-serif text-[#78dec8]">encode true meaning.</span>
+            <span className="italic font-serif text-white/90 underline decoration-white/30 underline-offset-8">encode true meaning.</span>
           </h2>
 
-          <p className="text-base sm:text-lg text-[#d0fcf4]/80 font-sans font-normal leading-relaxed">
+          <p className="text-base sm:text-lg text-white/80 font-sans font-normal leading-relaxed">
             Visualizations in Kairos do not use arbitrary colors or decorative gradients. Colors
             strictly map to computed risk levels — Sage for feasible margins, Amber for
             vulnerability, and Terracotta for critical thresholds.
@@ -226,20 +214,20 @@ export const DataVisualizationsSection: React.FC = () => {
               delay: shouldReduceMotion ? 0 : (card1InView ? card1Delay : 0),
               ease: [0.16, 1, 0.3, 1],
             }}
-            className="p-6 rounded-2xl bg-[#282c2d] border border-[#d0fcf4]/15 shadow-sm flex flex-col justify-between"
+            className="p-6 rounded-2xl bg-[#282c2d] border border-white/10 shadow-sm flex flex-col justify-between"
           >
-            <div className="space-y-3 pb-4 border-b border-[#d0fcf4]/15">
+            <div className="space-y-3 pb-4 border-b border-white/10">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-semibold text-[#78dec8]">
-                  <ShieldAlert className="w-4 h-4" />
+                <div className="flex items-center gap-2 text-xs font-semibold text-white/90">
+                  <ShieldAlert className="w-4 h-4 text-[#8ba888]" />
                   <span>Scenario Risk Breakdown</span>
                 </div>
-                <span className="font-mono text-[11px] text-[#d0fcf4]/60">0–100 Clamped</span>
+                <span className="font-mono text-[11px] text-white/60">0–100 Clamped</span>
               </div>
-              <h3 className="font-serif text-xl font-medium text-[#d0fcf4]">
+              <h3 className="font-serif text-xl font-medium text-white">
                 Multi-Axis Risk Scoring
               </h3>
-              <p className="text-xs text-[#d0fcf4]/70 font-sans leading-relaxed">
+              <p className="text-xs text-white/70 font-sans leading-relaxed">
                 Aggregates communication drag, deadline tightness, and burn rate. Evaluates whether
                 headcount additions actually create negative marginal returns.
               </p>
@@ -250,7 +238,7 @@ export const DataVisualizationsSection: React.FC = () => {
               {riskBarData.map((item, barIndex) => (
                 <div key={item.name} className="space-y-1.5 font-sans">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-medium text-[#d0fcf4]">{item.name}</span>
+                    <span className="font-medium text-white">{item.name}</span>
                     <div className="flex items-center gap-2">
                       <span
                         className="text-[10px] font-bold px-1.5 py-0.5 rounded text-white"
@@ -279,12 +267,12 @@ export const DataVisualizationsSection: React.FC = () => {
                     />
                   </div>
 
-                  <div className="text-[11px] text-[#d0fcf4]/55 italic">{item.drag}</div>
+                  <div className="text-[11px] text-white/55 italic">{item.drag}</div>
                 </div>
               ))}
             </div>
 
-            <div className="pt-4 border-t border-[#d0fcf4]/15 flex items-center justify-between text-xs font-sans text-[#d0fcf4]/60">
+            <div className="pt-4 border-t border-white/10 flex items-center justify-between text-xs font-sans text-white/60">
               <span>Overall Scenario Risk:</span>
               <span className="font-serif font-bold text-base text-[#e07a5f]">68 / 100</span>
             </div>
@@ -300,20 +288,20 @@ export const DataVisualizationsSection: React.FC = () => {
               delay: shouldReduceMotion ? 0 : (card2InView ? card2Delay : 0),
               ease: [0.16, 1, 0.3, 1],
             }}
-            className="p-6 rounded-2xl bg-[#282c2d] border border-[#d0fcf4]/15 shadow-sm flex flex-col justify-between"
+            className="p-6 rounded-2xl bg-[#282c2d] border border-white/10 shadow-sm flex flex-col justify-between"
           >
-            <div className="space-y-3 pb-4 border-b border-[#d0fcf4]/15">
+            <div className="space-y-3 pb-4 border-b border-white/10">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-semibold text-[#78dec8]">
-                  <PieIcon className="w-4 h-4" />
+                <div className="flex items-center gap-2 text-xs font-semibold text-white/90">
+                  <PieIcon className="w-4 h-4 text-[#8ba888]" />
                   <span>Portfolio Distribution</span>
                 </div>
-                <span className="font-mono text-[11px] text-[#d0fcf4]/60">5 Total Scenarios</span>
+                <span className="font-mono text-[11px] text-white/60">5 Total Scenarios</span>
               </div>
-              <h3 className="font-serif text-xl font-medium text-[#d0fcf4]">
+              <h3 className="font-serif text-xl font-medium text-white">
                 Scenario Portfolio Mix
               </h3>
-              <p className="text-xs text-[#d0fcf4]/70 font-sans leading-relaxed">
+              <p className="text-xs text-white/70 font-sans leading-relaxed">
                 Tracks the proportion of safe vs. high-exposure branches across your project so
                 leadership never bets on single fragile assumptions.
               </p>
@@ -390,7 +378,7 @@ export const DataVisualizationsSection: React.FC = () => {
 
                 {/* Center Donut Metric with synchronized counting */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-                  <span className="font-serif text-2xl font-bold text-[#d0fcf4]">
+                  <span className="font-serif text-2xl font-bold text-white">
                     {donutCenterCount}%
                   </span>
                   <span className="text-[10px] uppercase font-sans tracking-wider text-[#8ba888] font-semibold">
@@ -408,9 +396,9 @@ export const DataVisualizationsSection: React.FC = () => {
                         className="w-2.5 h-2.5 rounded-full"
                         style={{ backgroundColor: item.color }}
                       />
-                      <span className="text-[#d0fcf4]/80">{item.name}</span>
+                      <span className="text-white/80">{item.name}</span>
                     </div>
-                    <span className="font-mono font-semibold text-[#d0fcf4]">
+                    <span className="font-mono font-semibold text-white">
                       {item.value} {item.value === 1 ? "branch" : "branches"}
                     </span>
                   </div>
@@ -418,9 +406,9 @@ export const DataVisualizationsSection: React.FC = () => {
               </div>
             </div>
 
-            <div className="pt-4 border-t border-[#d0fcf4]/15 flex items-center justify-between text-xs font-sans text-[#d0fcf4]/60">
+            <div className="pt-4 border-t border-white/10 flex items-center justify-between text-xs font-sans text-white/60">
               <span>Selected Branch:</span>
-              <span className="font-medium text-[#d0fcf4]">Accelerated Q3 (High Risk)</span>
+              <span className="font-medium text-white">Accelerated Q3 (High Risk)</span>
             </div>
           </motion.div>
 
@@ -434,20 +422,20 @@ export const DataVisualizationsSection: React.FC = () => {
               delay: shouldReduceMotion ? 0 : (card3InView ? card3Delay : 0),
               ease: [0.16, 1, 0.3, 1],
             }}
-            className="p-6 rounded-2xl bg-[#282c2d] border border-[#d0fcf4]/15 shadow-sm flex flex-col justify-between"
+            className="p-6 rounded-2xl bg-[#282c2d] border border-white/10 shadow-sm flex flex-col justify-between"
           >
-            <div className="space-y-3 pb-4 border-b border-[#d0fcf4]/15">
+            <div className="space-y-3 pb-4 border-b border-white/10">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-semibold text-[#78dec8]">
-                  <TrendingUp className="w-4 h-4" />
+                <div className="flex items-center gap-2 text-xs font-semibold text-white/90">
+                  <TrendingUp className="w-4 h-4 text-[#8ba888]" />
                   <span>Stochastic Analysis</span>
                 </div>
-                <span className="font-mono text-[11px] text-[#d0fcf4]/60">N = 1,000 Runs</span>
+                <span className="font-mono text-[11px] text-white/60">N = 1,000 Runs</span>
               </div>
-              <h3 className="font-serif text-xl font-medium text-[#d0fcf4]">
+              <h3 className="font-serif text-xl font-medium text-white">
                 Monte Carlo Spread
               </h3>
-              <p className="text-xs text-[#d0fcf4]/70 font-sans leading-relaxed">
+              <p className="text-xs text-white/70 font-sans leading-relaxed">
                 Instead of a single date, Kairos runs 1,000 randomized iterations across task variance
                 to calculate true completion odds.
               </p>
@@ -471,11 +459,11 @@ export const DataVisualizationsSection: React.FC = () => {
               >
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-[#8ba888]" />
-                  <span className="font-sans text-xs font-medium text-[#d0fcf4]">
+                  <span className="font-sans text-xs font-medium text-white">
                     Probability On-Time
                   </span>
                 </div>
-                <span className="font-serif font-bold text-base text-[#78dec8]">78%</span>
+                <span className="font-serif font-bold text-base text-white">78%</span>
               </motion.div>
 
               {/* Precise Bell Curve SVG with Left-to-Right path length draw */}
@@ -498,8 +486,8 @@ export const DataVisualizationsSection: React.FC = () => {
                     y1="118"
                     x2="320"
                     y2="118"
-                    stroke="#d0fcf4"
-                    strokeOpacity={0.15}
+                    stroke="#ffffff"
+                    strokeOpacity={0.2}
                     strokeWidth="1"
                   />
 
@@ -509,7 +497,7 @@ export const DataVisualizationsSection: React.FC = () => {
                     y1="25"
                     x2="204"
                     y2="118"
-                    stroke="#78dec8"
+                    stroke="#ffffff"
                     strokeOpacity={0.4}
                     strokeDasharray="3 3"
                     strokeWidth="1"
@@ -518,7 +506,7 @@ export const DataVisualizationsSection: React.FC = () => {
                     x="204"
                     y="18"
                     textAnchor="middle"
-                    className="font-sans text-[9px] font-medium fill-[#78dec8]"
+                    className="font-sans text-[9px] font-medium fill-white/80"
                   >
                     Target 17.5w
                   </text>
@@ -540,7 +528,7 @@ export const DataVisualizationsSection: React.FC = () => {
                   <motion.path
                     d={mcCurvePath}
                     fill="none"
-                    stroke="#78dec8"
+                    stroke="#8ba888"
                     strokeWidth="2.5"
                     strokeLinecap="round"
                     initial={{ pathLength: 0 }}
@@ -553,34 +541,34 @@ export const DataVisualizationsSection: React.FC = () => {
                   />
 
                   {/* X Axis Tick Labels */}
-                  <text x="20" y="133" className="font-sans text-[10px] fill-[#d0fcf4]/50">
+                  <text x="20" y="133" className="font-sans text-[10px] fill-white/50">
                     12w
                   </text>
-                  <text x="87" y="133" className="font-sans text-[10px] fill-[#d0fcf4]/50">
+                  <text x="87" y="133" className="font-sans text-[10px] fill-white/50">
                     14w
                   </text>
-                  <text x="153" y="133" className="font-sans text-[10px] fill-[#d0fcf4]/50">
+                  <text x="153" y="133" className="font-sans text-[10px] fill-white/50">
                     16w
                   </text>
-                  <text x="220" y="133" className="font-sans text-[10px] fill-[#d0fcf4]/50">
+                  <text x="220" y="133" className="font-sans text-[10px] fill-white/50">
                     18w
                   </text>
-                  <text x="287" y="133" className="font-sans text-[10px] fill-[#d0fcf4]/50">
+                  <text x="287" y="133" className="font-sans text-[10px] fill-white/50">
                     20w
                   </text>
                 </svg>
               </div>
 
-              <div className="flex items-center justify-between text-[11px] font-sans text-[#d0fcf4]/65 pt-1 px-1">
+              <div className="flex items-center justify-between text-[11px] font-sans text-white/70 pt-1 px-1">
                 <span>P10: 14.2 wks</span>
-                <span className="font-medium text-[#78dec8]">Target: 17.5 wks</span>
+                <span className="font-medium text-white">Target: 17.5 wks</span>
                 <span>P90: 19.8 wks</span>
               </div>
             </div>
 
-            <div className="pt-4 border-t border-[#d0fcf4]/15 flex items-center justify-between text-xs font-sans text-[#d0fcf4]/60">
+            <div className="pt-4 border-t border-white/10 flex items-center justify-between text-xs font-sans text-white/60">
               <span>Uncertainty Margin:</span>
-              <span className="font-mono text-[#78dec8] font-semibold">&plusmn;2.8 wks at 90% CI</span>
+              <span className="font-mono text-white/90 font-semibold">&plusmn;2.8 wks at 90% CI</span>
             </div>
           </motion.div>
 
@@ -594,20 +582,20 @@ export const DataVisualizationsSection: React.FC = () => {
               delay: shouldReduceMotion ? 0 : (card4InView ? card4Delay : 0),
               ease: [0.16, 1, 0.3, 1],
             }}
-            className="p-6 rounded-2xl bg-[#282c2d] border border-[#d0fcf4]/15 shadow-sm flex flex-col justify-between"
+            className="p-6 rounded-2xl bg-[#282c2d] border border-white/10 shadow-sm flex flex-col justify-between"
           >
-            <div className="space-y-3 pb-4 border-b border-[#d0fcf4]/15">
+            <div className="space-y-3 pb-4 border-b border-white/10">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-semibold text-[#78dec8]">
-                  <Activity className="w-4 h-4" />
+                <div className="flex items-center gap-2 text-xs font-semibold text-white/90">
+                  <Activity className="w-4 h-4 text-[#8ba888]" />
                   <span>Trade-off Optimization</span>
                 </div>
-                <span className="font-mono text-[11px] text-[#d0fcf4]/60">P50 / P90 Envelope</span>
+                <span className="font-mono text-[11px] text-white/60">P50 / P90 Envelope</span>
               </div>
-              <h3 className="font-serif text-xl font-medium text-[#d0fcf4]">
+              <h3 className="font-serif text-xl font-medium text-white">
                 Delivery Trade-off Frontier
               </h3>
-              <p className="text-xs text-[#d0fcf4]/70 font-sans leading-relaxed">
+              <p className="text-xs text-white/70 font-sans leading-relaxed">
                 Calculates non-linear returns from headcount additions. Identifies the mathematical apex
                 between delivery velocity and team coordination overhead.
               </p>
@@ -629,10 +617,10 @@ export const DataVisualizationsSection: React.FC = () => {
                   </defs>
 
                   {/* Subtle Gridlines */}
-                  <line x1="20" y1="170" x2="360" y2="170" stroke="#d0fcf4" strokeOpacity="0.15" strokeWidth="1" />
-                  <line x1="20" y1="115" x2="360" y2="115" stroke="#d0fcf4" strokeOpacity="0.08" strokeWidth="1" strokeDasharray="3 3" />
-                  <line x1="20" y1="60" x2="360" y2="60" stroke="#d0fcf4" strokeOpacity="0.08" strokeWidth="1" strokeDasharray="3 3" />
-                  <line x1="20" y1="20" x2="20" y2="170" stroke="#d0fcf4" strokeOpacity="0.15" strokeWidth="1" />
+                  <line x1="20" y1="170" x2="360" y2="170" stroke="#ffffff" strokeOpacity="0.15" strokeWidth="1" />
+                  <line x1="20" y1="115" x2="360" y2="115" stroke="#ffffff" strokeOpacity="0.08" strokeWidth="1" strokeDasharray="3 3" />
+                  <line x1="20" y1="60" x2="360" y2="60" stroke="#ffffff" strokeOpacity="0.08" strokeWidth="1" strokeDasharray="3 3" />
+                  <line x1="20" y1="20" x2="20" y2="170" stroke="#ffffff" strokeOpacity="0.15" strokeWidth="1" />
 
                   {/* Shaded confidence region */}
                   <motion.path
@@ -651,7 +639,7 @@ export const DataVisualizationsSection: React.FC = () => {
                   <path
                     d="M 20 170 Q 140 155 240 125 T 360 85"
                     fill="none"
-                    stroke="#d0fcf4"
+                    stroke="#ffffff"
                     strokeOpacity="0.25"
                     strokeWidth="1.5"
                     strokeDasharray="4 4"
@@ -661,7 +649,7 @@ export const DataVisualizationsSection: React.FC = () => {
                   <motion.path
                     d="M 20 170 Q 120 160 200 110 T 360 45"
                     fill="none"
-                    stroke="#78dec8"
+                    stroke="#8ba888"
                     strokeWidth="3"
                     strokeLinecap="round"
                     initial={{ pathLength: 0 }}
@@ -687,22 +675,22 @@ export const DataVisualizationsSection: React.FC = () => {
                     }}
                     style={{ transformOrigin: "200px 110px" }}
                   >
-                    <circle cx="200" cy="110" r="5" fill="#78dec8" />
-                    <circle cx="200" cy="110" r="9" stroke="#78dec8" strokeWidth="1.5" strokeOpacity="0.5" fill="none" />
+                    <circle cx="200" cy="110" r="5" fill="#8ba888" />
+                    <circle cx="200" cy="110" r="9" stroke="#8ba888" strokeWidth="1.5" strokeOpacity="0.5" fill="none" />
                     <text
                       x="212"
                       y="105"
-                      className="font-sans text-[10px] font-semibold fill-[#78dec8]"
+                      className="font-sans text-[10px] font-semibold fill-white"
                     >
                       Optimum Feasibility (78%)
                     </text>
                   </motion.g>
 
                   {/* Axis Labels */}
-                  <text x="20" y="190" className="font-sans text-[10px] fill-[#d0fcf4]/50">
+                  <text x="20" y="190" className="font-sans text-[10px] fill-white/50">
                     Headcount Allocation →
                   </text>
-                  <text x="360" y="190" textAnchor="end" className="font-sans text-[10px] fill-[#d0fcf4]/50">
+                  <text x="360" y="190" textAnchor="end" className="font-sans text-[10px] fill-white/50">
                     Delivery Velocity
                   </text>
                 </svg>
@@ -710,7 +698,7 @@ export const DataVisualizationsSection: React.FC = () => {
             </div>
 
             {/* Bottom Caption Pill */}
-            <div className="pt-4 border-t border-[#d0fcf4]/15 flex items-center justify-between text-xs font-sans text-[#d0fcf4]/70">
+            <div className="pt-4 border-t border-white/10 flex items-center justify-between text-xs font-sans text-white/70">
               <span>Brooks&apos;s Law Drag Factor: 1.42x</span>
               <span className="text-[#8ba888] font-medium flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#8ba888]" />

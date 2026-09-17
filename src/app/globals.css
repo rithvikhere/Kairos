@@ -3,8 +3,9 @@
 @tailwind utilities;
 
 :root {
+  --ink-deep: #121415;
   --color-base: #343839;
-  --color-ink: #d0fcf4;
+  --color-ink: #ffffff;
   --color-accent: #3a5a6b;
   --color-neutral: #454d4b;
   --color-risk-low: #e6ede3;
@@ -14,8 +15,8 @@
 }
 
 body {
-  background-color: #343839;
-  color: #d0fcf4;
+  background-color: transparent;
+  color: #ffffff;
   font-family: var(--font-plus-jakarta), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -27,7 +28,7 @@ body {
 /* Custom selection highlight matching accent color */
 ::selection {
   background-color: #3a5a6b;
-  color: #d0fcf4;
+  color: #ffffff;
 }
 
 /* Accessibility: prefers-reduced-motion global suppression */

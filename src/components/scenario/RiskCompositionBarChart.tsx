@@ -45,7 +45,7 @@ export function RiskCompositionBarChart({
 
   if (activeKeys.length === 0) {
     return (
-      <div className="p-6 rounded-2xl bg-white border border-neutral text-center text-ink/50 text-xs">
+      <div className="p-6 rounded-2xl bg-[#282c2d] border border-neutral text-center text-white/50 text-xs">
         No risk dimensions evaluated. Enable resourcing or risk constraints to evaluate risk composition.
       </div>
     );
@@ -65,17 +65,17 @@ export function RiskCompositionBarChart({
   };
 
   return (
-    <div className="p-5 bg-white border border-neutral rounded-2xl shadow-xs space-y-4 text-ink">
+    <div className="p-5 bg-[#282c2d] border border-neutral rounded-2xl shadow-xs space-y-4 text-white">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-serif text-base font-bold text-[#0f172a]">Risk Composition Breakdown</h3>
-          <p className="text-xs text-ink/60">
+          <h3 className="font-serif text-base font-bold text-white">Risk Composition Breakdown</h3>
+          <p className="text-xs text-white/60">
             Evaluated risk dimensions ({activeKeys.length} active) contributing to composite risk score ({riskScore.toFixed(2)})
           </p>
         </div>
         <div className="text-right">
-          <div className="text-[11px] font-semibold text-ink/50 uppercase font-mono">Composite Score</div>
-          <div className="font-serif text-lg font-bold text-ink">{riskScore.toFixed(2)} / 100</div>
+          <div className="text-[11px] font-semibold text-white/50 uppercase font-mono">Composite Score</div>
+          <div className="font-serif text-lg font-bold text-white">{riskScore.toFixed(2)} / 100</div>
         </div>
       </div>
 
@@ -89,26 +89,26 @@ export function RiskCompositionBarChart({
           return (
             <div key={key} className="space-y-1">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-medium text-ink flex items-center gap-1.5">
+                <span className="font-medium text-white flex items-center gap-1.5">
                   {label}
                   {onExplainDimension && (
                     <button
                       type="button"
                       onClick={() => onExplainDimension(key)}
-                      className="text-ink/40 hover:text-accent transition-colors p-0.5"
+                      className="text-white/40 hover:text-white transition-colors p-0.5"
                       title={`Explain ${label}`}
                     >
                       <Info className="w-3.5 h-3.5" />
                     </button>
                   )}
-                  <span className="text-[10px] text-ink/40 font-mono">({normalizedWeightPct}% wt)</span>
+                  <span className="text-[10px] text-white/40 font-mono">({normalizedWeightPct}% wt)</span>
                 </span>
-                <span className="font-mono text-xs font-bold text-ink">
+                <span className="font-mono text-xs font-bold text-white">
                   {score.toFixed(2)}
                 </span>
               </div>
 
-              <div className="h-2.5 w-full bg-[#f5f2ec] rounded-full overflow-hidden border border-neutral/50">
+              <div className="h-2.5 w-full bg-[#222526] rounded-full overflow-hidden border border-neutral/60">
                 <div
                   className={`h-full ${getBarColor(score)} rounded-full transition-all duration-500`}
                   style={{ width: `${Math.min(100, Math.max(0, score))}%` }}
@@ -121,3 +121,5 @@ export function RiskCompositionBarChart({
     </div>
   );
 }
+
+export default RiskCompositionBarChart;

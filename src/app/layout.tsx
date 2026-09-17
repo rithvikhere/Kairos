@@ -3,6 +3,8 @@ import { Fraunces, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers.js";
 import { AppShell } from "../components/layout/AppShell.js";
+import { IridescenceBackground } from "../components/background/IridescenceBackground.js";
+import { PageFadeProvider } from "../contexts/PageFadeContext.js";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -29,9 +31,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${fraunces.variable} ${plusJakarta.variable}`}>
-      <body className="bg-[#343839] text-[#d0fcf4] min-h-screen flex flex-col font-sans antialiased selection:bg-[#2c4356] selection:text-[#d0fcf4]">
+      <body className="bg-transparent text-white min-h-screen flex flex-col font-sans antialiased selection:bg-[#2c4356] selection:text-white">
+        <IridescenceBackground />
         <Providers>
-          <AppShell>{children}</AppShell>
+          <PageFadeProvider>
+            <AppShell>{children}</AppShell>
+          </PageFadeProvider>
         </Providers>
       </body>
     </html>

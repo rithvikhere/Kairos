@@ -26,7 +26,7 @@ export function MonteCarloConvergenceChart({
 
   if (!convergence || convergence.length < 2) {
     return (
-      <div className="p-6 rounded-2xl bg-white border border-neutral text-center text-ink/50 text-xs">
+      <div className="p-6 rounded-2xl bg-[#282c2d] border border-neutral text-center text-white/50 text-xs">
         Convergence checkpoint tracking not recorded for this simulation run.
       </div>
     );
@@ -66,28 +66,28 @@ export function MonteCarloConvergenceChart({
   const finalPoint = convergence[convergence.length - 1]!;
 
   return (
-    <div className="p-5 bg-white border border-neutral rounded-2xl shadow-xs space-y-3 text-ink">
+    <div className="p-5 bg-[#282c2d] border border-neutral rounded-2xl shadow-xs space-y-3 text-white">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-serif text-base font-bold text-[#0f172a]">Monte Carlo Convergence Tracker</h3>
-          <p className="text-xs text-ink/60">
+          <h3 className="font-serif text-base font-bold text-white">Monte Carlo Convergence Tracker</h3>
+          <p className="text-xs text-white/60">
             Running mean stabilization across trial iterations ({convergence.length} checkpoints)
           </p>
         </div>
         <div className="text-right">
           {hoveredPoint ? (
             <>
-              <div className="text-[11px] font-semibold text-[#2c4356] uppercase font-mono transition-colors">
+              <div className="text-[11px] font-semibold text-white/80 uppercase font-mono transition-colors">
                 Checkpoint: {hoveredPoint.iteration} Trials
               </div>
-              <div className="font-mono text-base font-bold text-[#2c4356]">
+              <div className="font-mono text-base font-bold text-white">
                 ${Math.round(hoveredPoint.runningMean).toLocaleString("en-US")}
               </div>
             </>
           ) : (
             <>
-              <div className="text-[11px] font-semibold text-ink/50 uppercase font-mono">Final Converged Mean</div>
-              <div className="font-mono text-base font-bold text-accent">
+              <div className="text-[11px] font-semibold text-white/50 uppercase font-mono">Final Converged Mean</div>
+              <div className="font-mono text-base font-bold text-white">
                 ${Math.round(finalPoint.runningMean).toLocaleString("en-US")}
               </div>
             </>
@@ -112,7 +112,8 @@ export function MonteCarloConvergenceChart({
                   y1={yPos}
                   x2={width - padRight}
                   y2={yPos}
-                  stroke="#e8e3d8"
+                  stroke="#ffffff"
+                  strokeOpacity={0.15}
                   strokeDasharray="4 4"
                   strokeWidth="1"
                 />
@@ -120,7 +121,8 @@ export function MonteCarloConvergenceChart({
                   x={padLeft - 8}
                   y={yPos + 4}
                   textAnchor="end"
-                  fill="#717a74"
+                  fill="#ffffff"
+                  fillOpacity={0.6}
                   fontSize="10"
                 >
                   ${Math.round(yVal).toLocaleString("en-US")}
@@ -132,7 +134,7 @@ export function MonteCarloConvergenceChart({
           {/* Convergence trend line */}
           <polyline
             fill="none"
-            stroke="#3a5a6b"
+            stroke="#8ba888"
             strokeWidth="2.5"
             strokeLinejoin="round"
             strokeLinecap="round"
@@ -148,10 +150,10 @@ export function MonteCarloConvergenceChart({
                 y1={padTop}
                 x2={hoveredPoint.x}
                 y2={height - padBottom}
-                stroke="#2c4356"
+                stroke="#ffffff"
                 strokeDasharray="3 3"
                 strokeWidth="1.5"
-                opacity="0.5"
+                opacity="0.4"
               />
               {/* Horizontal line to y-axis */}
               <line
@@ -159,10 +161,10 @@ export function MonteCarloConvergenceChart({
                 y1={hoveredPoint.y}
                 x2={hoveredPoint.x}
                 y2={hoveredPoint.y}
-                stroke="#2c4356"
+                stroke="#ffffff"
                 strokeDasharray="3 3"
                 strokeWidth="1.5"
-                opacity="0.5"
+                opacity="0.4"
               />
             </g>
           )}
@@ -196,8 +198,8 @@ export function MonteCarloConvergenceChart({
                   cx={cx}
                   cy={cy}
                   r={isHovered ? "6" : isLast ? "5" : "3.5"}
-                  fill={isHovered ? "#2c4356" : isLast ? "#3a5a6b" : "#faf8f4"}
-                  stroke={isHovered ? "#ffffff" : isLast ? "#ffffff" : "#3a5a6b"}
+                  fill={isHovered ? "#8ba888" : isLast ? "#8ba888" : "#ffffff"}
+                  stroke={isHovered ? "#ffffff" : isLast ? "#ffffff" : "#8ba888"}
                   strokeWidth={isHovered ? "2.5" : "2"}
                   className="transition-all duration-150"
                 />
@@ -271,7 +273,8 @@ export function MonteCarloConvergenceChart({
             x={padLeft}
             y={height - 12}
             textAnchor="start"
-            fill="#717a74"
+            fill="#ffffff"
+            fillOpacity={0.6}
             fontSize="10"
           >
             {minX} trials
@@ -280,7 +283,8 @@ export function MonteCarloConvergenceChart({
             x={width - padRight}
             y={height - 12}
             textAnchor="end"
-            fill="#717a74"
+            fill="#ffffff"
+            fillOpacity={0.6}
             fontSize="10"
           >
             {maxX} trials
@@ -288,10 +292,12 @@ export function MonteCarloConvergenceChart({
         </svg>
       </div>
 
-      <div className="flex items-center justify-between text-[11px] text-ink/50 pt-1 border-t border-neutral/60">
+      <div className="flex items-center justify-between text-[11px] text-white/50 pt-1 border-t border-white/10">
         <span>Metric: {metricLabel}</span>
         <span>Asymptotic stabilization proves Monte Carlo sample size adequacy</span>
       </div>
     </div>
   );
 }
+
+export default MonteCarloConvergenceChart;

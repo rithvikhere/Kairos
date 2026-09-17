@@ -479,21 +479,21 @@ export function ExplanationModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg rounded-2xl bg-[#282c2d] border border-[#d0fcf4]/20 shadow-2xl p-6 space-y-5 animate-in zoom-in-95 duration-200 text-[#d0fcf4]"
+        className="w-full max-w-lg rounded-2xl bg-[#282c2d] border border-white/10 shadow-2xl p-6 space-y-5 animate-in zoom-in-95 duration-200 text-white"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-start justify-between pb-3 border-b border-[#d0fcf4]/15">
+        <div className="flex items-start justify-between pb-3 border-b border-white/10">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-[#2c4356]/40 text-[#78dec8] border border-[#2c4356]">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-[#2c4356]/40 text-[#8ba888] border border-[#2c4356]">
                 {data.category}
               </span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-[#3d4344] text-[#d0fcf4]/70">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-[#3d4344] text-white/70">
                 {data.tag}
               </span>
             </div>
-            <h2 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-[#d0fcf4] pt-1">
+            <h2 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-white pt-1">
               {data.title}
             </h2>
           </div>
@@ -501,7 +501,7 @@ export function ExplanationModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-lg text-[#d0fcf4]/60 hover:text-[#d0fcf4] hover:bg-[#3d4344] transition-colors"
+            className="p-1 rounded-lg text-white/60 hover:text-white hover:bg-[#3d4344] transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -510,35 +510,35 @@ export function ExplanationModal({
         {/* Content Body */}
         <div className="space-y-4 text-xs font-sans leading-relaxed">
           {/* Section 1: Definition */}
-          <div className="p-3 rounded-xl bg-[#343839] border border-[#d0fcf4]/15 space-y-1 shadow-2xs">
-            <div className="text-[11px] font-bold text-[#78dec8] flex items-center gap-1.5 uppercase tracking-wider font-mono">
+          <div className="p-3 rounded-xl bg-[#343839] border border-white/10 space-y-1 shadow-2xs">
+            <div className="text-[11px] font-bold text-[#8ba888] flex items-center gap-1.5 uppercase tracking-wider font-mono">
               <BookOpen className="w-3.5 h-3.5" />
               <span>Real-World Meaning</span>
             </div>
-            <p className="text-[#d0fcf4]/80">{data.definition}</p>
+            <p className="text-white/80">{data.definition}</p>
           </div>
 
           {/* Section 2: Mechanism & Math */}
-          <div className="p-3 rounded-xl bg-[#343839] border border-[#d0fcf4]/15 space-y-1.5 shadow-2xs">
-            <div className="text-[11px] font-bold text-[#78dec8] flex items-center gap-1.5 uppercase tracking-wider font-mono">
+          <div className="p-3 rounded-xl bg-[#343839] border border-white/10 space-y-1.5 shadow-2xs">
+            <div className="text-[11px] font-bold text-[#8ba888] flex items-center gap-1.5 uppercase tracking-wider font-mono">
               <Sparkles className="w-3.5 h-3.5" />
               <span>How Kairos Simulates This</span>
             </div>
-            <p className="text-[#d0fcf4]/80">{data.mechanism}</p>
+            <p className="text-white/80">{data.mechanism}</p>
             {data.mathFormula && (
-              <div className="p-2 rounded-lg bg-[#222526] font-mono text-[10.5px] text-[#78dec8] border border-[#d0fcf4]/15">
+              <div className="p-2 rounded-lg bg-[#222526] font-mono text-[10.5px] text-white border border-white/10">
                 {data.mathFormula}
               </div>
             )}
           </div>
 
           {/* Section 3: Impact on Risk & Feasibility */}
-          <div className="p-3 rounded-xl bg-[#343839] border border-[#d0fcf4]/15 space-y-1 shadow-2xs">
+          <div className="p-3 rounded-xl bg-[#343839] border border-white/10 space-y-1 shadow-2xs">
             <div className="text-[11px] font-bold text-[#b5502f] flex items-center gap-1.5 uppercase tracking-wider font-mono">
               <ShieldAlert className="w-3.5 h-3.5" />
               <span>Impact on Scenario Feasibility</span>
             </div>
-            <p className="text-[#d0fcf4]/80">{data.impact}</p>
+            <p className="text-white/80">{data.impact}</p>
           </div>
 
           {/* Section 4: Best Practice Guidance */}
@@ -552,11 +552,11 @@ export function ExplanationModal({
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end pt-2 border-t border-[#d0fcf4]/15">
+        <div className="flex justify-end pt-2 border-t border-white/10">
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2 rounded-xl bg-[#2c4356] hover:bg-[#1d2e3b] text-[#d0fcf4] text-xs font-semibold shadow-sm transition-colors"
+            className="px-5 py-2 rounded-xl bg-[#2c4356] hover:bg-[#1d2e3b] text-white text-xs font-semibold shadow-sm transition-colors"
           >
             Got It
           </button>
