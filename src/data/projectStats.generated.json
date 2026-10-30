@@ -1,0 +1,14 @@
+{
+  "testsPassing": 303,
+  "testFileCount": 28,
+  "riskFormulaCount": {
+    "extended": 11,
+    "core": 3,
+    "total": 14
+  },
+  "apiRouteCount": 14,
+  "componentCount": 43,
+  "constraintCount": 15,
+  "phasesShipped": 8,
+  "generatedAt": "2026-10-30T15:18:19.919Z"
+}

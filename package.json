@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Decision Simulation & Scenario Intelligence Platform — Phase 1: core domain logic",
   "scripts": {
-    "prebuild": "npx tsx scripts/generateProjectStats.ts",
+    "stats:generate": "npx tsx scripts/generateProjectStats.ts",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
