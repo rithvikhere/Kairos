@@ -299,10 +299,10 @@ export const CATEGORY_ICONS: Record<string, React.ReactNode> = {
 };
 
 export const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  "Core Resourcing": { bg: "bg-[#edf3f6]", text: "text-[#244252]", border: "border-[#3a5a6b]/20" },
-  "Team Factors": { bg: "bg-[#eaf1ec]", text: "text-[#27422e]", border: "border-[#3d5a45]/20" },
-  "External Factors": { bg: "bg-[#f4eee6]", text: "text-[#4d331a]", border: "border-[#6e4e2e]/20" },
-  "Process Factors": { bg: "bg-[#f3edf5]", text: "text-[#442852]", border: "border-[#5e3d6e]/20" },
+  "Core Resourcing": { bg: "bg-[#1d3545]", text: "text-[#7ee787]", border: "border-[#388bfd]/60" },
+  "Team Factors": { bg: "bg-[#193822]", text: "text-[#7ee787]", border: "border-[#2ea043]/60" },
+  "External Factors": { bg: "bg-[#3f2b14]", text: "text-[#f2cc60]", border: "border-[#d29922]/60" },
+  "Process Factors": { bg: "bg-[#3b1f42]", text: "text-[#f778ba]", border: "border-[#bc8cff]/60" },
 };
 
 interface ConstraintCatalogueModalProps {
@@ -379,24 +379,24 @@ export function ConstraintCatalogueModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-[#faf8f4] border border-neutral rounded-2xl shadow-modal w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden text-ink">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-[#282c2d] border border-neutral rounded-2xl shadow-modal w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden text-white">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-neutral flex items-center justify-between bg-white">
+        <div className="px-6 py-4 border-b border-neutral flex items-center justify-between bg-[#222526]">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center text-accent">
+            <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center text-[#8ba888]">
               <Sliders className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#0f172a]">Configure Scenario Constraints</h2>
-              <p className="text-xs text-ink/60">
+              <h2 className="font-serif text-xl sm:text-2xl font-bold text-white">Configure Scenario Constraints</h2>
+              <p className="text-xs text-white/60">
                 Toggle and calibrate the 15 uniform levers that govern simulation computation
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-ink/40 hover:text-ink hover:bg-neutral transition-colors"
+            className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-neutral transition-colors"
             aria-label="Close modal"
           >
             <X className="w-5 h-5" />
@@ -407,7 +407,7 @@ export function ConstraintCatalogueModal({
         <div className="p-6 overflow-y-auto space-y-6 flex-1">
           {categories.map((cat) => {
             const items = CONSTRAINT_CATALOGUE.filter((m) => m.category === cat);
-            const style = CATEGORY_COLORS[cat] || { bg: "bg-[#edf3f6]", text: "text-[#244252]", border: "border-neutral" };
+            const style = CATEGORY_COLORS[cat] || { bg: "bg-[#2c4356]/40", text: "text-[#8ba888]", border: "border-neutral" };
 
             return (
               <div key={cat} className="space-y-3">
@@ -429,8 +429,8 @@ export function ConstraintCatalogueModal({
                         key={meta.key}
                         className={`p-3.5 rounded-xl border transition-all ${
                           isEnabled
-                            ? "bg-white border-accent/30 shadow-xs"
-                            : "bg-[#f5f2ec]/60 border-neutral/60 opacity-80 hover:opacity-100"
+                            ? "bg-[#222526] border-accent/60 shadow-xs"
+                            : "bg-[#1e2122]/70 border-neutral/60 text-white/70 hover:text-white"
                         }`}
                       >
                         <div className="flex items-start justify-between gap-4">
@@ -438,7 +438,7 @@ export function ConstraintCatalogueModal({
                           <div className="flex items-start gap-3 flex-1 min-w-0">
                             {meta.isMandatory ? (
                               <div
-                                className="mt-1 w-4 h-4 rounded bg-[#2c4356] text-white flex items-center justify-center shrink-0 shadow-2xs"
+                                className="mt-1 w-4 h-4 rounded bg-[#3a5a6b] text-white flex items-center justify-center shrink-0 shadow-2xs"
                                 title="Mandatory Core Workload Anchor"
                               >
                                 <Check className="w-3 h-3 stroke-[3]" />
@@ -455,37 +455,37 @@ export function ConstraintCatalogueModal({
                             <div className="min-w-0">
                               <label
                                 htmlFor={`toggle-${meta.key}`}
-                                className="text-sm font-semibold text-ink cursor-pointer hover:underline flex items-center gap-1.5"
+                                className="text-sm font-semibold text-white cursor-pointer hover:underline flex items-center gap-1.5"
                               >
                                 {meta.label}
                                 {meta.isMandatory && (
-                                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-[#2c4356]/10 text-[#2c4356] font-bold">
+                                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-[#3a5a6b]/30 text-[#8ba888] font-bold border border-[#3a5a6b]/50">
                                     Mandatory Anchor
                                   </span>
                                 )}
-                                <span className="text-[11px] font-mono font-normal text-ink/50">
+                                <span className="text-[11px] font-mono font-normal text-white/50">
                                   ({meta.unit})
                                 </span>
                               </label>
-                              <p className="text-xs text-ink/65 leading-relaxed mt-0.5">
+                              <p className="text-xs text-white/65 leading-relaxed mt-0.5">
                                 {meta.description}
                               </p>
 
                               {/* Information about constraint: what's the use before even adding it */}
                               <div className="mt-2 pt-2 border-t border-neutral/40 text-[11px] space-y-1.5">
-                                <div className="flex items-start gap-1.5 text-[#2c4356]">
-                                  <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[#2c4356]" />
+                                <div className="flex items-start gap-1.5 text-[#8ba888]">
+                                  <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[#8ba888]" />
                                   <div className="leading-snug">
-                                    <span className="font-semibold text-[#2c4356]">Simulation Purpose: </span>
-                                    <span className="text-[#221f1b]/80">
+                                    <span className="font-semibold text-[#8ba888]">Simulation Purpose: </span>
+                                    <span className="text-white/80">
                                       {CONSTRAINT_PURPOSES[meta.key]?.use || meta.description}
                                     </span>
                                   </div>
                                 </div>
 
-                                <div className="flex flex-wrap items-center justify-between gap-1 text-[10.5px] text-[#221f1b]/65 pt-0.5">
+                                <div className="flex flex-wrap items-center justify-between gap-1 text-[10.5px] text-white/60 pt-0.5">
                                   <span>
-                                    <strong className="text-[#221f1b]/80">Impacts:</strong>{" "}
+                                    <strong className="text-white/80">Impacts:</strong>{" "}
                                     {CONSTRAINT_PURPOSES[meta.key]?.impact}
                                   </span>
                                   <button
@@ -494,20 +494,20 @@ export function ConstraintCatalogueModal({
                                       e.stopPropagation();
                                       setExpandedKey(expandedKey === meta.key ? null : meta.key);
                                     }}
-                                    className="text-[#2c4356] hover:underline font-semibold cursor-pointer shrink-0"
+                                    className="text-[#8ba888] hover:underline font-semibold cursor-pointer shrink-0"
                                   >
                                     {expandedKey === meta.key ? "Hide formula & guidance ▲" : "What's the use? Details ▼"}
                                   </button>
                                 </div>
 
                                 {expandedKey === meta.key && (
-                                  <div className="mt-1.5 p-2.5 rounded-lg bg-white/95 border border-[#2c4356]/20 text-[11px] space-y-1.5 text-[#221f1b]/80 shadow-2xs animate-in fade-in duration-150">
+                                  <div className="mt-1.5 p-2.5 rounded-lg bg-[#1e2122] border border-[#3a5a6b]/40 text-[11px] space-y-1.5 text-white/80 shadow-2xs animate-in fade-in duration-150">
                                     <div>
-                                      <strong className="text-[#2c4356]">How Kairos Simulates This:</strong>{" "}
+                                      <strong className="text-[#8ba888]">How Kairos Simulates This:</strong>{" "}
                                       <span>{CONSTRAINT_PURPOSES[meta.key]?.mechanism}</span>
                                     </div>
                                     <div>
-                                      <strong className="text-[#2c4356]">Recommended Benchmark:</strong>{" "}
+                                      <strong className="text-[#8ba888]">Recommended Benchmark:</strong>{" "}
                                       <span>{CONSTRAINT_PURPOSES[meta.key]?.guidance}</span>
                                     </div>
                                   </div>
@@ -527,9 +527,9 @@ export function ConstraintCatalogueModal({
                                   step={meta.step}
                                   value={setting.value}
                                   onChange={(e) => updateValue(meta.key, parseFloat(e.target.value) || meta.min)}
-                                  className="w-20 px-2 py-1 text-right font-mono text-xs font-semibold bg-[#faf8f4] border border-neutral rounded-md focus:border-accent focus:outline-none"
+                                  className="w-20 px-2 py-1 text-right font-mono text-xs font-semibold bg-[#1e2122] border border-neutral text-white rounded-md focus:border-accent focus:outline-none"
                                 />
-                                <span className="text-xs text-ink/50 font-mono w-10 truncate">
+                                <span className="text-xs text-white/50 font-mono w-10 truncate">
                                   {meta.unit}
                                 </span>
                               </div>
@@ -540,7 +540,7 @@ export function ConstraintCatalogueModal({
                                 step={meta.step}
                                 value={setting.value}
                                 onChange={(e) => updateValue(meta.key, parseFloat(e.target.value))}
-                                className="w-full accent-accent h-1.5 bg-neutral rounded-lg cursor-pointer"
+                                className="w-full accent-[#8ba888] h-1.5 bg-[#343839] rounded-lg cursor-pointer"
                               />
                             </div>
                           )}
@@ -555,20 +555,20 @@ export function ConstraintCatalogueModal({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-neutral bg-white flex items-center justify-between">
+        <div className="px-6 py-4 border-t border-neutral bg-[#222526] flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span
               className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold font-mono ${
                 activeCount > 0
-                  ? "bg-accent/10 text-accent border border-accent/20"
-                  : "bg-red-50 text-red-600 border border-red-200"
+                  ? "bg-accent/20 text-[#8ba888] border border-accent/40"
+                  : "bg-[#b5502f]/20 text-[#b5502f] border border-[#b5502f]/40"
               }`}
             >
               <Check className="w-3.5 h-3.5" />
               {activeCount} of 15 constraints active
             </span>
             {activeCount === 0 && (
-              <span className="text-xs text-red-600 font-medium">
+              <span className="text-xs text-[#b5502f] font-medium">
                 At least 1 constraint must be enabled to simulate
               </span>
             )}
@@ -577,7 +577,7 @@ export function ConstraintCatalogueModal({
           <div className="flex items-center gap-3">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-ink/70 hover:text-ink rounded-xl border border-neutral hover:bg-[#f5f2ec] transition-colors"
+              className="px-4 py-2 text-xs font-semibold text-white/70 hover:text-white rounded-xl border border-neutral hover:bg-[#343839] transition-colors"
             >
               Cancel
             </button>
@@ -587,7 +587,7 @@ export function ConstraintCatalogueModal({
               className={`px-5 py-2 text-xs font-semibold rounded-xl text-white shadow-xs transition-all flex items-center gap-1.5 ${
                 activeCount > 0
                   ? "bg-accent hover:bg-accent/90 cursor-pointer"
-                  : "bg-neutral/70 text-ink/30 cursor-not-allowed"
+                  : "bg-neutral/70 text-white/30 cursor-not-allowed"
               }`}
             >
               Apply Constraints

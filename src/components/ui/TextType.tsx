@@ -30,8 +30,11 @@ export const TextType: React.FC<TextTypeProps> = ({
       return;
     }
 
-    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (prefersReducedMotion) {
+    const prefersReducedMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReducedMotion || process.env.NODE_ENV === "test") {
       setDisplayedText(text);
       setIsTyping(false);
       onComplete?.();

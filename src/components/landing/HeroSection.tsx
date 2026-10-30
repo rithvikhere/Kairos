@@ -37,12 +37,6 @@ export const HeroSection: React.FC = () => {
       ref={sectionRef}
       className="relative min-h-screen flex flex-col justify-between items-center text-center px-6 sm:px-12 lg:px-20 py-16 md:py-20 bg-transparent text-white overflow-hidden"
     >
-      {/* Bottom gradient blend transition into Section 2 */}
-      <div
-        className="pointer-events-none absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-b from-transparent via-[#121415]/60 to-[#121415] z-0"
-        aria-hidden="true"
-      />
-
       {/* Centered Main Hero Block */}
       <div className="relative z-10 w-full max-w-4xl mx-auto flex flex-col items-center justify-center text-center py-16 my-auto space-y-6">
         {/* Big Kairos Title in Center */}

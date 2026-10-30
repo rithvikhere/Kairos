@@ -53,8 +53,8 @@ export const FinalCtaSection: React.FC = () => {
 
       <div className="relative z-10 max-w-4xl mx-auto my-auto text-center space-y-8">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-sans text-white bg-[#2c4356]/40 border border-[#2c4356]">
-          <span className="w-1.5 h-1.5 rounded-full bg-white" />
-          <span>Ready for production project modeling</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-[#8ba888]" />
+          <span>Trade-off Physics · The Shape of Every Decision</span>
         </div>
 
         <h2 className="font-serif text-4xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-white leading-[1.12]">
@@ -111,17 +111,6 @@ export const FinalCtaSection: React.FC = () => {
         </div>
       </div>
 
-      {/* Editorial Landing Footer */}
-      <footer className="w-full max-w-7xl mx-auto pt-12 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-sans text-white/60">
-        <div className="flex items-center gap-2">
-          <span className="font-serif font-bold text-white">Kairos</span>
-          <span>·</span>
-          <span>Decision Simulation & Scenario Intelligence</span>
-        </div>
-        <div>
-          <span>Built for engineering leaders & product strategists</span>
-        </div>
-      </footer>
     </section>
   );
 };

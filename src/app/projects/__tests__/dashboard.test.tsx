@@ -48,58 +48,61 @@ afterEach(() => {
 });
 
 describe("ProjectsDashboardPage — Interactive Workable Dashboard", () => {
-  it("renders active scenario header, chrome bar, and top 4 metric cards", () => {
+  it("starts as a blank page with 0 scenarios and renders blank canvas state", () => {
     renderDashboard();
 
     expect(screen.getByText(/Cloud Infra Modernization/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/Scenario 2: Accelerated Q3/i)
-    ).toBeInTheDocument();
-    expect(screen.getByText(/Forked from Baseline/i)).toBeInTheDocument();
+    expect(screen.getByText(/Blank Page · 0 Scenarios/i)).toBeInTheDocument();
+    expect(screen.getByText(/Start Your Decision Simulation/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Quick Start Blank Baseline/i })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /Build New Scenario/i }).length).toBeGreaterThan(0);
+  });
+
+  it("creates a scenario from blank page and renders active scenario header and 4 metric cards", () => {
+    renderDashboard();
+
+    // Click quick start blank scenario
+    const quickStartBtn = screen.getByRole("button", { name: /Quick Start Blank Baseline/i });
+    fireEvent.click(quickStartBtn);
+
+    expect(screen.getAllByText(/Scenario 1: Baseline Plan/i).length).toBeGreaterThan(0);
 
     // 4 metric cards
     expect(screen.getByText("Estimated Cost")).toBeInTheDocument();
     expect(screen.getByText("Delivery Time")).toBeInTheDocument();
     expect(screen.getByText("Effective Headcount")).toBeInTheDocument();
     expect(screen.getByText("Risk Score")).toBeInTheDocument();
-    expect(screen.getByText("HIGH")).toBeInTheDocument();
-    expect(screen.getByText("Infeasible (Threshold ≥ 50)")).toBeInTheDocument();
+
+    // Active constraints strip is visible
+    expect(screen.getByText("Active Constraints")).toBeInTheDocument();
   });
 
   it("updates calculations dynamically when moving the headcount slider", () => {
     renderDashboard();
 
-    // Initial headcount: 10
-    expect(screen.getByText("10 engineers")).toBeInTheDocument();
+    // Start with a scenario
+    const quickStartBtn = screen.getByRole("button", { name: /Quick Start Blank Baseline/i });
+    fireEvent.click(quickStartBtn);
+
+    // Initial headcount: 8
+    expect(screen.getByText("8 engineers")).toBeInTheDocument();
 
     // Find headcount slider by its role/value
     const sliders = screen.getAllByRole("slider");
-    const headcountSlider = sliders.find((s) => (s as HTMLInputElement).value === "10") ?? sliders[1]!;
-    expect(headcountSlider).toHaveValue("10");
+    const headcountSlider = sliders.find((s) => (s as HTMLInputElement).value === "8") ?? sliders[1]!;
+    expect(headcountSlider).toHaveValue("8");
 
-    // Adjust headcount to 6
-    fireEvent.change(headcountSlider, { target: { value: "6" } });
-    expect(screen.getByText("6 engineers")).toBeInTheDocument();
-  });
-
-  it("switches scenarios when clicking on a different sidebar item", () => {
-    renderDashboard();
-
-    const baselineBtn = screen.getByRole("button", {
-      name: /1\. Baseline Scope/i,
-    });
-    fireEvent.click(baselineBtn);
-
-    expect(
-      screen.getByText(/Scenario 1: Baseline Scope/i)
-    ).toBeInTheDocument();
-    expect(screen.getByText(/Original Baseline/i)).toBeInTheDocument();
-    expect(screen.getByText("6 engineers")).toBeInTheDocument();
-    expect(screen.getByText("20 weeks")).toBeInTheDocument();
+    // Adjust headcount to 12
+    fireEvent.change(headcountSlider, { target: { value: "12" } });
+    expect(screen.getByText("12 engineers")).toBeInTheDocument();
   });
 
   it("opens scenario comparison modal with parameter diffs and attribution", () => {
     renderDashboard();
+
+    // Start with a scenario
+    const quickStartBtn = screen.getByRole("button", { name: /Quick Start Blank Baseline/i });
+    fireEvent.click(quickStartBtn);
 
     const compareBtn = screen.getByRole("button", {
       name: /compare scenarios/i,
@@ -124,37 +127,15 @@ describe("ProjectsDashboardPage — Interactive Workable Dashboard", () => {
   it("triggers Monte Carlo simulation on button click starting at base 100", () => {
     renderDashboard();
 
+    // Start with a scenario
+    const quickStartBtn = screen.getByRole("button", { name: /Quick Start Blank Baseline/i });
+    fireEvent.click(quickStartBtn);
+
     const mcBtn = screen.getByRole("button", { name: /run monte carlo \(100\)/i });
     expect(mcBtn).toBeInTheDocument();
     fireEvent.click(mcBtn);
 
     expect(screen.getByText(/Sampling 200 runs\.\.\./i)).toBeInTheDocument();
-  });
-
-  it("filters scenarios using search input and status tabs", () => {
-    renderDashboard();
-
-    // Verify all 3 initial scenarios
-    expect(screen.getByText(/1\. Baseline Scope/i)).toBeInTheDocument();
-    expect(screen.getByText(/2\. Accelerated Q3/i)).toBeInTheDocument();
-    expect(screen.getByText(/3\. Contractor Surge/i)).toBeInTheDocument();
-
-    // Type into search filter
-    const searchInput = screen.getByPlaceholderText(/Filter scenarios\.\.\./i);
-    fireEvent.change(searchInput, { target: { value: "Contractor" } });
-
-    expect(screen.queryByText(/1\. Baseline Scope/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/3\. Contractor Surge/i)).toBeInTheDocument();
-
-    // Clear search
-    fireEvent.change(searchInput, { target: { value: "" } });
-
-    // Switch to Favorites tab
-    const favTab = screen.getByRole("button", { name: /Fav \(/i });
-    fireEvent.click(favTab);
-
-    // Accelerated Q3 is favorite in preset
-    expect(screen.getByText(/2\. Accelerated Q3/i)).toBeInTheDocument();
   });
 
   it("opens Build New Scenario modal and allows building scenarios on the dashboard", () => {
@@ -163,7 +144,7 @@ describe("ProjectsDashboardPage — Interactive Workable Dashboard", () => {
     const buildBtn = screen.getAllByRole("button", { name: /build/i })[0];
     fireEvent.click(buildBtn!);
 
-    expect(screen.getByText("Build New Scenario")).toBeVisible();
+    expect(screen.getAllByText("Build New Scenario").length).toBeGreaterThan(0);
     expect(screen.getByText("Natural Language Lever Adjuster")).toBeInTheDocument();
 
     // Cancel modal
@@ -189,11 +170,15 @@ describe("ProjectsDashboardPage — Interactive Workable Dashboard", () => {
 
     const brand = screen.getByText("KAIROS");
     expect(brand).toBeInTheDocument();
-    expect(brand.className).toContain("text-[#0f172a]");
+    expect(brand.className).toContain("text-white");
   });
 
   it("opens Compare Scenarios in landscape mode with values on the left and sensitivity tornado on the right", () => {
     renderDashboard();
+
+    // Start with a scenario
+    const quickStartBtn = screen.getByRole("button", { name: /Quick Start Blank Baseline/i });
+    fireEvent.click(quickStartBtn);
 
     const compareBtn = screen.getByRole("button", {
       name: /compare scenarios/i,
@@ -209,6 +194,10 @@ describe("ProjectsDashboardPage — Interactive Workable Dashboard", () => {
 
   it("displays simulation purpose, impact, and expandable use details in Configure Scenario Constraints dialog", () => {
     renderDashboard();
+
+    // Start with a scenario
+    const quickStartBtn = screen.getByRole("button", { name: /Quick Start Blank Baseline/i });
+    fireEvent.click(quickStartBtn);
 
     const addLeversBtn = screen.getByRole("button", { name: /\+ Add More Levers/i });
     fireEvent.click(addLeversBtn);

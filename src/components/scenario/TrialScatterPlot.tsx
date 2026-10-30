@@ -15,7 +15,7 @@ interface TrialScatterPlotProps {
 export function TrialScatterPlot({ trialSample }: TrialScatterPlotProps) {
   if (!trialSample || trialSample.length === 0) {
     return (
-      <div className="p-6 rounded-2xl bg-[#282c2d] border border-neutral text-center text-white/50 text-xs">
+      <div className="p-6 rounded-2xl bg-[#222526] border border-[#454d4b] text-center text-white/50 text-xs">
         Trial outcome sampling not available for this run.
       </div>
     );
@@ -38,7 +38,7 @@ export function TrialScatterPlot({ trialSample }: TrialScatterPlotProps) {
   const yMax = maxCost + padCost;
 
   const width = 600;
-  const height = 240;
+  const height = 290;
   const padLeft = 75;
   const padRight = 30;
   const padTop = 20;
@@ -56,10 +56,10 @@ export function TrialScatterPlot({ trialSample }: TrialScatterPlotProps) {
   const infeasibleCount = trialSample.length - feasibleCount;
 
   return (
-    <div className="p-5 bg-[#282c2d] border border-neutral rounded-2xl shadow-xs space-y-3 text-white">
+    <div className="p-5 bg-[#222526] border border-[#454d4b] rounded-2xl shadow-card space-y-3.5 text-white">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-serif text-base font-bold text-white">Trial Scatter Distribution</h3>
+          <h3 className="font-serif text-base sm:text-lg font-bold text-white">Trial Scatter Distribution</h3>
           <p className="text-xs text-white/60">
             Actual Cost vs. Estimated Time across representative trials ({trialSample.length} samples)
           </p>

@@ -34,8 +34,8 @@ export const DashboardMock: React.FC<DashboardMockProps> = ({ onSelectHotspot })
             <span className="w-3 h-3 rounded-full bg-white/20" />
             <span className="w-3 h-3 rounded-full bg-white/20" />
             <span className="w-3 h-3 rounded-full bg-white/20" />
-            <span className="ml-3 font-mono text-[11px] text-white/50">
-              kairos.app/projects/cloud-infra-2025/scenarios
+            <span className="ml-3 font-mono text-[11px] text-white/70">
+              kairos
             </span>
           </div>
           <div className="flex items-center gap-3">
@@ -107,7 +107,7 @@ export const DashboardMock: React.FC<DashboardMockProps> = ({ onSelectHotspot })
 
             {/* Sidebar Bottom Engine State */}
             <div className="p-2.5 rounded-lg bg-[#3d4344]/50 border border-white/10 text-[11px] space-y-1">
-              <div className="text-white/60">Brooks&apos;s Law Model</div>
+              <div className="text-white font-serif font-bold">Brooks&apos;s Law Model</div>
               <div className="font-mono text-white/90 font-semibold">Overhead factor 1.35x</div>
             </div>
           </div>
@@ -207,7 +207,7 @@ export const DashboardMock: React.FC<DashboardMockProps> = ({ onSelectHotspot })
                 <div className="flex items-center justify-between pb-2 border-b border-white/10">
                   <div className="flex items-center gap-2">
                     <Sliders className="w-4 h-4 text-[#8ba888]" />
-                    <span className="text-xs font-semibold text-white">Project Levers</span>
+                    <span className="text-sm font-serif font-bold text-white">Project Levers</span>
                   </div>
                   <span className="text-[10px] text-white/80 font-mono">Live Inputs</span>
                 </div>
@@ -265,7 +265,7 @@ export const DashboardMock: React.FC<DashboardMockProps> = ({ onSelectHotspot })
                 <div className="flex items-center justify-between pb-2 border-b border-white/10">
                   <div className="flex items-center gap-2">
                     <TrendingUp className="w-4 h-4 text-[#8ba888]" />
-                    <span className="text-xs font-semibold text-white">
+                    <span className="text-sm font-serif font-bold text-white">
                       Monte Carlo (1,000 Iterations)
                     </span>
                   </div>
@@ -312,7 +312,7 @@ export const DashboardMock: React.FC<DashboardMockProps> = ({ onSelectHotspot })
               </div>
               <div className="space-y-1 text-xs">
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-white">
+                  <span className="text-sm font-serif font-bold text-white">
                     Bounded AI Scenario Attribution
                   </span>
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#2c4356]/40 text-white font-mono">

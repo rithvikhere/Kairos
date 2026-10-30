@@ -1,7 +1,7 @@
 "use client";
 
 import { useInView, useMotionValue, useSpring } from "framer-motion";
-import { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 
 export interface CountUpProps {
   to: number;
@@ -48,7 +48,8 @@ export function CountUp({
     stiffness,
   });
 
-  const isInView = useInView(ref, { once: true, margin: "0px" });
+  // once: false ensures the counter can re-trigger whenever it re-enters the viewport
+  const isInView = useInView(ref, { once: false, margin: "0px" });
 
   const getDecimalPlaces = (num: number): number => {
     if (decimals !== undefined) return decimals;
@@ -85,8 +86,10 @@ export function CountUp({
   );
 
   useEffect(() => {
-    motionValue.set(to);
-  }, [to, motionValue]);
+    if (isInView && startWhen) {
+      motionValue.set(to);
+    }
+  }, [to, isInView, startWhen, motionValue]);
 
   useEffect(() => {
     if (ref.current) {
@@ -117,8 +120,14 @@ export function CountUp({
         clearTimeout(timeoutId);
         clearTimeout(durationTimeoutId);
       };
+    } else if (!isInView || !startWhen) {
+      // Reset to initial baseline when out of view so re-entry counts up again
+      motionValue.set(direction === "down" ? to : from);
+      if (ref.current) {
+        ref.current.textContent = formatValue(direction === "down" ? to : from);
+      }
     }
-  }, [isInView, startWhen, motionValue, direction, from, to, delay, onStart, onEnd, duration]);
+  }, [isInView, startWhen, motionValue, direction, from, to, delay, onStart, onEnd, duration, formatValue]);
 
   useEffect(() => {
     const unsubscribe = springValue.on("change", (latest: number) => {

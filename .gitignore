@@ -9,6 +9,9 @@ coverage/
 .next/
 test-results/
 playwright-report/
+src/data/projectStats.generated.json
+vitest-results.temp.json
+*.temp.json
 
 # Logs & Environment
 logs

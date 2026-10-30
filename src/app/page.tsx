@@ -2,8 +2,9 @@
 
 import React from "react";
 import { HeroSection } from "../components/landing/HeroSection.js";
-import { FeatureShowcaseSection } from "../components/landing/FeatureShowcaseSection.js";
+import { ProofOfWorkSection } from "../components/landing/ProofOfWorkSection.js";
 import { DataVisualizationsSection } from "../components/landing/DataVisualizationsSection.js";
+import { FeatureShowcaseSection } from "../components/landing/FeatureShowcaseSection.js";
 import { FinalCtaSection } from "../components/landing/FinalCtaSection.js";
 
 /**
@@ -19,13 +20,16 @@ export default function LandingPage() {
         {/* 1. Hero Section */}
         <HeroSection />
 
-        {/* 2. Data Visualizations Section: Meaning-driven analytical risk charts */}
+        {/* 2. Proof of Work Section: Live-computed repository telemetry and stats */}
+        <ProofOfWorkSection />
+
+        {/* 3. Data Visualizations Section: Meaning-driven analytical risk charts */}
         <DataVisualizationsSection />
 
-        {/* 3. Interactive Feature Showcase: Subsystem inspector + Dashboard mock */}
+        {/* 4. Interactive Feature Showcase: Subsystem inspector + Dashboard mock */}
         <FeatureShowcaseSection />
 
-        {/* 4. Final CTA Section: Transition into the Kairos workspace */}
+        {/* 5. Final CTA Section: Transition into the Kairos workspace */}
         <FinalCtaSection />
       </div>
     </div>

@@ -45,7 +45,7 @@ export function RiskCompositionBarChart({
 
   if (activeKeys.length === 0) {
     return (
-      <div className="p-6 rounded-2xl bg-[#282c2d] border border-neutral text-center text-white/50 text-xs">
+      <div className="p-6 rounded-2xl bg-[#222526] border border-[#454d4b] text-center text-white/50 text-xs">
         No risk dimensions evaluated. Enable resourcing or risk constraints to evaluate risk composition.
       </div>
     );
@@ -65,7 +65,7 @@ export function RiskCompositionBarChart({
   };
 
   return (
-    <div className="p-5 bg-[#282c2d] border border-neutral rounded-2xl shadow-xs space-y-4 text-white">
+    <div className="p-5 bg-[#222526] border border-[#454d4b] rounded-2xl shadow-card space-y-4 text-white">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="font-serif text-base font-bold text-white">Risk Composition Breakdown</h3>
@@ -108,7 +108,7 @@ export function RiskCompositionBarChart({
                 </span>
               </div>
 
-              <div className="h-2.5 w-full bg-[#222526] rounded-full overflow-hidden border border-neutral/60">
+              <div className="h-2.5 w-full bg-[#1e2122] rounded-full overflow-hidden border border-[#454d4b]/60">
                 <div
                   className={`h-full ${getBarColor(score)} rounded-full transition-all duration-500`}
                   style={{ width: `${Math.min(100, Math.max(0, score))}%` }}
